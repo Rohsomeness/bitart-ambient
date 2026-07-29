@@ -331,10 +331,10 @@ body.player-collapsed .player {
   padding: 0;
 }
 
-/* Scene rail */
+/* Scene rail — 3×3 for nine scenes */
 .scene-rail {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin-bottom: 7px;
 }

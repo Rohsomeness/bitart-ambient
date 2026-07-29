@@ -679,6 +679,331 @@ const AmbientAudio = (() => {
     return nodes;
   }
 
+  /** Distant soft fireworks over ocean — low whooshes + warm booms (no ear pain) */
+  function buildFireworks() {
+    const nodes = [];
+
+    // soft night ocean
+    const sea = makeNoise("brown");
+    const seaLp = ctx.createBiquadFilter();
+    seaLp.type = "lowpass";
+    seaLp.frequency.value = 420;
+    const seaG = ctx.createGain();
+    seaG.gain.value = 0.07;
+    sea.out.connect(seaLp);
+    seaLp.connect(seaG);
+    seaG.connect(master);
+    sea.source.start();
+    nodes.push(sea.source, seaLp, seaG);
+
+    // warm night pad
+    [65.4, 82.4, 98].forEach((f, i) => {
+      const p = padTone(f, i ? "sine" : "triangle");
+      p.gain.gain.setTargetAtTime(0.012, ctx.currentTime, 2);
+      p.gain.connect(master);
+      nodes.push(p.osc, p.gain);
+    });
+
+    function boom() {
+      if (!playing || ctx.state !== "running") return;
+      const t = ctx.currentTime;
+      // low thump
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      const base = 48 + Math.random() * 40;
+      o.frequency.setValueAtTime(base * 1.8, t);
+      o.frequency.exponentialRampToValueAtTime(base * 0.5, t + 0.25);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(0.0001, t);
+      og.gain.exponentialRampToValueAtTime(0.1 + Math.random() * 0.06, t + 0.01);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      o.connect(og);
+      og.connect(master);
+      o.start(t);
+      o.stop(t + 0.5);
+
+      // soft sparkle noise (warm, not sizzle)
+      fireNoiseBurst({
+        duration: 0.18 + Math.random() * 0.15,
+        peak: 0.06 + Math.random() * 0.05,
+        attack: 0.008,
+        highpass: 200,
+        lowpass: 1400,
+        band: 500 + Math.random() * 400,
+        bandQ: 0.5,
+        color: "pink",
+      });
+
+      // gentle trailing crackle
+      if (Math.random() < 0.6) {
+        setTimeout(() => {
+          if (!playing) return;
+          fireNoiseBurst({
+            duration: 0.08,
+            peak: 0.04,
+            attack: 0.005,
+            highpass: 250,
+            lowpass: 1100,
+            band: 450,
+            bandQ: 0.7,
+            color: "pink",
+          });
+        }, 120 + Math.random() * 180);
+      }
+    }
+
+    function whoosh() {
+      if (!playing || ctx.state !== "running") return;
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer(0.4, "pink");
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(280, t);
+      bp.frequency.exponentialRampToValueAtTime(700, t + 0.25);
+      bp.Q.value = 0.8;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.035, t + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      src.start(t);
+      src.stop(t + 0.4);
+    }
+
+    const show = { _timeout: null };
+    function armShow() {
+      if (!playing) return;
+      if (Math.random() < 0.55) whoosh();
+      setTimeout(() => {
+        if (playing) boom();
+      }, 180 + Math.random() * 220);
+      // occasional double boom
+      if (Math.random() < 0.35) {
+        setTimeout(() => {
+          if (playing) boom();
+        }, 500 + Math.random() * 400);
+      }
+      show._timeout = setTimeout(armShow, 1400 + Math.random() * 2200);
+    }
+    show._timeout = setTimeout(armShow, 600);
+    nodes.push({
+      stop() { clearTimeout(show._timeout); show._timeout = null; },
+    });
+
+    return nodes;
+  }
+
+  /** Night forest under the moon — soft wind, crickets (low), owl-ish coos */
+  function buildMoonforest() {
+    const nodes = [];
+
+    // night wind
+    const wind = makeNoise("brown");
+    const wLp = ctx.createBiquadFilter();
+    wLp.type = "lowpass";
+    wLp.frequency.value = 350;
+    const wG = ctx.createGain();
+    wG.gain.value = 0.055;
+    wind.out.connect(wLp);
+    wLp.connect(wG);
+    wG.connect(master);
+    wind.source.start();
+    nodes.push(wind.source, wLp, wG);
+
+    // breeze shimmer (very soft pink)
+    const breeze = makeNoise("pink");
+    const bLp = ctx.createBiquadFilter();
+    bLp.type = "lowpass";
+    bLp.frequency.value = 700;
+    const bG = ctx.createGain();
+    bG.gain.value = 0.025;
+    breeze.out.connect(bLp);
+    bLp.connect(bG);
+    bG.connect(master);
+    breeze.source.start();
+    nodes.push(breeze.source, bLp, bG);
+
+    // moonlit pad
+    [55, 73.4, 92.5, 110].forEach((f, i) => {
+      const p = padTone(f, i % 2 ? "sine" : "triangle");
+      p.gain.gain.setTargetAtTime(0.012 + (i % 2) * 0.004, ctx.currentTime, 3);
+      p.gain.connect(master);
+      nodes.push(p.osc, p.gain);
+    });
+
+    // soft low crickets (not high chirps)
+    const crickets = { _interval: null };
+    crickets._interval = setInterval(() => {
+      if (!playing || ctx.state !== "running") return;
+      if (Math.random() > 0.5) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      o.type = "triangle";
+      const base = 380 + Math.random() * 160;
+      o.frequency.setValueAtTime(base, t);
+      o.frequency.setValueAtTime(base * 1.04, t + 0.04);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.012, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      const soft = ctx.createBiquadFilter();
+      soft.type = "lowpass";
+      soft.frequency.value = 900;
+      o.connect(soft);
+      soft.connect(g);
+      g.connect(master);
+      o.start(t);
+      o.stop(t + 0.1);
+    }, 320);
+    nodes.push(crickets);
+
+    // rare soft hoot
+    const owl = { _timeout: null };
+    function armOwl() {
+      if (!playing) return;
+      if (Math.random() < 0.55) {
+        const t = ctx.currentTime;
+        [0, 0.22].forEach((delay, i) => {
+          const o = ctx.createOscillator();
+          o.type = "sine";
+          o.frequency.setValueAtTime(180 - i * 12, t + delay);
+          o.frequency.exponentialRampToValueAtTime(140 - i * 10, t + delay + 0.18);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t + delay);
+          g.gain.linearRampToValueAtTime(0.03, t + delay + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.28);
+          const soft = ctx.createBiquadFilter();
+          soft.type = "lowpass";
+          soft.frequency.value = 600;
+          o.connect(soft);
+          soft.connect(g);
+          g.connect(master);
+          o.start(t + delay);
+          o.stop(t + delay + 0.35);
+        });
+      }
+      owl._timeout = setTimeout(armOwl, 5000 + Math.random() * 8000);
+    }
+    owl._timeout = setTimeout(armOwl, 3000);
+    nodes.push({
+      stop() { clearTimeout(owl._timeout); owl._timeout = null; },
+    });
+
+    return nodes;
+  }
+
+  /** Cat + dog nap — soft room tone, slow breaths, tiny sleepy snuffles */
+  function buildPets() {
+    const nodes = [];
+
+    // cozy room hush
+    const room = makeNoise("brown");
+    const rLp = ctx.createBiquadFilter();
+    rLp.type = "lowpass";
+    rLp.frequency.value = 280;
+    const rG = ctx.createGain();
+    rG.gain.value = 0.04;
+    room.out.connect(rLp);
+    rLp.connect(rG);
+    rG.connect(master);
+    room.source.start();
+    nodes.push(room.source, rLp, rG);
+
+    // warm lamp hum pad
+    [61.7, 82.4, 123.5].forEach((f, i) => {
+      const p = padTone(f, "sine");
+      p.gain.gain.setTargetAtTime(0.014 + i * 0.003, ctx.currentTime, 2.5);
+      p.gain.connect(master);
+      nodes.push(p.osc, p.gain);
+    });
+
+    // slow breathing swell
+    const breath = makeNoise("pink");
+    const bLp = ctx.createBiquadFilter();
+    bLp.type = "lowpass";
+    bLp.frequency.value = 400;
+    const bG = ctx.createGain();
+    bG.gain.value = 0.02;
+    breath.out.connect(bLp);
+    bLp.connect(bG);
+    bG.connect(master);
+    breath.source.start();
+    nodes.push(breath.source, bLp, bG);
+
+    const breathe = { _raf: null };
+    const start = performance.now();
+    function tick() {
+      if (!playing) return;
+      const sec = (performance.now() - start) / 1000;
+      // ~4 second breath cycle
+      const wave = 0.015 + 0.018 * (0.5 + 0.5 * Math.sin(sec * 1.55));
+      bG.gain.setTargetAtTime(wave, ctx.currentTime, 0.12);
+      breathe._raf = requestAnimationFrame(tick);
+    }
+    breathe._raf = requestAnimationFrame(tick);
+    nodes.push(breathe);
+
+    // rare soft snuffle / contented huff
+    const snuffle = { _timeout: null };
+    function armSnuffle() {
+      if (!playing) return;
+      if (Math.random() < 0.65) {
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(90 + Math.random() * 40, t);
+        o.frequency.exponentialRampToValueAtTime(55, t + 0.2);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.025, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+        o.connect(g);
+        g.connect(master);
+        o.start(t);
+        o.stop(t + 0.32);
+
+        fireNoiseBurst({
+          duration: 0.12,
+          peak: 0.03,
+          attack: 0.02,
+          highpass: 80,
+          lowpass: 500,
+          band: 200,
+          bandQ: 0.5,
+          color: "brown",
+        });
+      }
+      snuffle._timeout = setTimeout(armSnuffle, 3500 + Math.random() * 5000);
+    }
+    snuffle._timeout = setTimeout(armSnuffle, 2000);
+    nodes.push({
+      stop() { clearTimeout(snuffle._timeout); snuffle._timeout = null; },
+    });
+
+    // tiny cat purr-ish low pulse (very soft)
+    const purr = padTone(48, "sine");
+    purr.gain.gain.setTargetAtTime(0.01, ctx.currentTime, 2);
+    purr.gain.connect(master);
+    nodes.push(purr.osc, purr.gain);
+    const purrMod = { _raf: null };
+    const pStart = performance.now();
+    function purrTick() {
+      if (!playing) return;
+      const sec = (performance.now() - pStart) / 1000;
+      // ~25 Hz-ish amplitude tremolo feel via gain
+      const level = 0.006 + 0.008 * (0.5 + 0.5 * Math.sin(sec * 28));
+      purr.gain.gain.setTargetAtTime(level, ctx.currentTime, 0.02);
+      purrMod._raf = requestAnimationFrame(purrTick);
+    }
+    purrMod._raf = requestAnimationFrame(purrTick);
+    nodes.push(purrMod);
+
+    return nodes;
+  }
+
   const builders = {
     fireplace: buildFireplace,
     rainforest: buildRainforest,
@@ -686,6 +1011,9 @@ const AmbientAudio = (() => {
     rainy: buildRainy,
     stars: buildStars,
     sakura: buildSakura,
+    fireworks: buildFireworks,
+    moonforest: buildMoonforest,
+    pets: buildPets,
   };
 
   async function play(sceneId) {

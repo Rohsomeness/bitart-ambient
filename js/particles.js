@@ -59,6 +59,9 @@ const ParticleFX = (() => {
       rainy: isMobile ? 50 : 90,
       stars: isMobile ? 24 : 40,
       sakura: isMobile ? 30 : 50,
+      fireworks: isMobile ? 36 : 64,
+      moonforest: isMobile ? 22 : 38,
+      pets: isMobile ? 12 : 20,
     };
     const n = countMap[id] || 30;
     for (let i = 0; i < n; i++) particles.push(spawn(id, true));
@@ -120,6 +123,44 @@ const ParticleFX = (() => {
           age: Math.random() * Math.PI * 2,
           size: 1.5 + Math.random() * 2.5,
           kind: Math.random() > 0.55 ? "fly" : "spark",
+        };
+      case "fireworks": {
+        // spark trails + burst fragments
+        const kind = Math.random() > 0.55 ? "spark" : "trail";
+        const hues = [330, 200, 40, 15, 280];
+        return {
+          x: w * (0.15 + Math.random() * 0.7),
+          y: randomY ? h * (0.1 + Math.random() * 0.45) : h * 0.75,
+          vx: (Math.random() - 0.5) * (kind === "spark" ? 2.2 : 0.4),
+          vy: kind === "spark" ? (Math.random() - 0.7) * 1.8 : -1.5 - Math.random() * 1.5,
+          life: kind === "spark" ? 0.5 + Math.random() * 0.5 : 0.7 + Math.random() * 0.4,
+          age: 0,
+          size: 1.5 + Math.random() * 2.5,
+          hue: hues[Math.floor(Math.random() * hues.length)],
+          kind,
+        };
+      }
+      case "moonforest":
+        return {
+          x: Math.random() * w,
+          y: randomY ? Math.random() * h : h * (0.5 + Math.random() * 0.4),
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: -0.12 - Math.random() * 0.25,
+          life: 1,
+          age: Math.random() * Math.PI * 2,
+          size: 1.2 + Math.random() * 2.2,
+          kind: Math.random() > 0.4 ? "fly" : "mist",
+        };
+      case "pets":
+        return {
+          x: w * (0.25 + Math.random() * 0.5),
+          y: h * (0.35 + Math.random() * 0.4),
+          vx: (Math.random() - 0.5) * 0.15,
+          vy: -0.15 - Math.random() * 0.25,
+          life: 0.6 + Math.random() * 0.5,
+          age: Math.random() * Math.PI * 2,
+          size: 2 + Math.random() * 3,
+          kind: "zz",
         };
       case "sakura":
       default:
@@ -240,6 +281,61 @@ const ParticleFX = (() => {
           ctx.fill();
           ctx.restore();
           if (p.y > h + 10 || p.x > w + 20) particles[i] = spawn("sakura");
+          break;
+        }
+        case "fireworks": {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.02; // gravity
+          p.life -= p.kind === "spark" ? 0.012 : 0.008;
+          const a = Math.max(0, p.life);
+          ctx.globalAlpha = a;
+          ctx.fillStyle = `hsl(${p.hue}, 85%, ${55 + a * 25}%)`;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+          if (p.kind === "spark" && a > 0.3) {
+            ctx.globalAlpha = a * 0.35;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (p.life <= 0 || p.y > h + 10) particles[i] = spawn("fireworks");
+          break;
+        }
+        case "moonforest": {
+          p.x += p.vx + Math.sin(p.age * 1.2) * 0.12;
+          p.y += p.vy;
+          const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(p.age * 3.5));
+          if (p.kind === "fly") {
+            ctx.globalAlpha = tw;
+            ctx.fillStyle = "#f0e6a0";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = tw * 0.25;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 2.8, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.globalAlpha = 0.08 + 0.06 * Math.sin(p.age);
+            ctx.fillStyle = "#d8d0f0";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (p.y < -10 || p.x < -10 || p.x > w + 10) particles[i] = spawn("moonforest");
+          break;
+        }
+        case "pets": {
+          p.x += p.vx + Math.sin(p.age) * 0.08;
+          p.y += p.vy;
+          p.life -= 0.004;
+          const a = Math.max(0, p.life);
+          ctx.globalAlpha = a * 0.7;
+          ctx.fillStyle = `hsla(280, 40%, 75%, ${a})`;
+          // floating Zzz
+          ctx.font = `${10 + p.size}px VT323, monospace`;
+          ctx.fillText("z", p.x, p.y);
+          if (p.life <= 0 || p.y < h * 0.15) particles[i] = spawn("pets");
           break;
         }
       }

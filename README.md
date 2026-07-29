@@ -12,6 +12,9 @@ Scenes (Imagine-generated bitart):
 | Rainy Nite | Neon rain window |
 | Starfield | Campfire under stars |
 | Sakura | Cherry blossom garden |
+| Fireworks | Beach night fireworks |
+| Moonforest | Night pines & full moon |
+| Nap Time | Cat & dog sleeping |
 
 ## Features
 

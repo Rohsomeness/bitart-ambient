@@ -9,6 +9,9 @@
     { id: "rainy", name: "Rainy Nite", file: "assets/scenes/rainy.jpg", emoji: "🌧️" },
     { id: "stars", name: "Starfield", file: "assets/scenes/stars.jpg", emoji: "✨" },
     { id: "sakura", name: "Sakura", file: "assets/scenes/sakura.jpg", emoji: "🌸" },
+    { id: "fireworks", name: "Fireworks", file: "assets/scenes/fireworks.jpg", emoji: "🎆" },
+    { id: "moonforest", name: "Moonforest", file: "assets/scenes/moonforest.jpg", emoji: "🌙" },
+    { id: "pets", name: "Nap Time", file: "assets/scenes/pets.jpg", emoji: "🐾" },
   ];
 
   let index = 0;
