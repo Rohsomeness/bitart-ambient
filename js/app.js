@@ -63,7 +63,7 @@
       `;
       btn.addEventListener("click", () => {
         press(btn);
-        AmbientAudio.thock("key");
+        AmbientAudio.thock("scene");
         selectScene(i);
       });
       sceneRail.appendChild(btn);
@@ -260,6 +260,8 @@
     selectScene(index + 1);
   });
 
+  // Volume + soft stepped thocks while dragging
+  let lastVolThock = 0;
   volSlider.addEventListener("input", () => {
     const v = Number(volSlider.value);
     volVal.textContent = String(v);
@@ -268,6 +270,11 @@
       AmbientAudio.setMuted(false);
       btnMute.setAttribute("aria-pressed", "false");
       btnMute.textContent = "🔊";
+    }
+    const now = performance.now();
+    if (now - lastVolThock > 55) {
+      lastVolThock = now;
+      AmbientAudio.thock("chip");
     }
   });
 

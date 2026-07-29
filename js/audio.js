@@ -6,6 +6,7 @@ const AmbientAudio = (() => {
   let ctx = null;
   let master = null;
   let muteGain = null;
+  let uiGain = null; // button thocks — always audible, soft
   let ambientNodes = [];
   let playing = false;
   let muted = false;
@@ -22,6 +23,11 @@ const AmbientAudio = (() => {
     muteGain.gain.value = muted ? 0 : 1;
     master.connect(muteGain);
     muteGain.connect(ctx.destination);
+
+    // Dedicated soft bus for UI clicks (bypasses ambience mute)
+    uiGain = ctx.createGain();
+    uiGain.gain.value = 0.85;
+    uiGain.connect(ctx.destination);
     return ctx;
   }
 
@@ -662,52 +668,119 @@ const AmbientAudio = (() => {
     return playing;
   }
 
-  /** Thocky mechanical click */
+  /**
+   * Creamy soft-thock UI click — layered like a squishy mechanical switch:
+   * low body thump + warm mid "cream" + short soft plastic tip.
+   * kind: "key" | "chip" | "play" | "scene"
+   */
   async function thock(kind = "key") {
     await resume();
+    if (!uiGain) return;
     const t = ctx.currentTime;
-    // body thud
-    const o = ctx.createOscillator();
-    o.type = "sine";
-    const g = ctx.createGain();
-    if (kind === "play") {
-      o.frequency.setValueAtTime(180, t);
-      o.frequency.exponentialRampToValueAtTime(70, t + 0.06);
-      g.gain.setValueAtTime(0.18, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
-    } else if (kind === "chip") {
-      o.frequency.setValueAtTime(320, t);
-      o.frequency.exponentialRampToValueAtTime(140, t + 0.04);
-      g.gain.setValueAtTime(0.1, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-    } else {
-      o.frequency.setValueAtTime(240, t);
-      o.frequency.exponentialRampToValueAtTime(90, t + 0.05);
-      g.gain.setValueAtTime(0.14, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    // tiny random humanize so repeated presses don't sound identical
+    const r = () => Math.random();
+    const jitter = 0.92 + r() * 0.16;
+
+    // Presets: [bodyHz, creamHz, bodyPeak, creamPeak, noisePeak, bodyDur, creamDur]
+    const presets = {
+      play:  { body: 95,  cream: 210, bodyPk: 0.22, creamPk: 0.10, noisePk: 0.045, bodyDur: 0.11, creamDur: 0.09, tip: 0.012 },
+      scene: { body: 130, cream: 280, bodyPk: 0.14, creamPk: 0.09, noisePk: 0.04,  bodyDur: 0.08, creamDur: 0.07, tip: 0.01 },
+      chip:  { body: 150, cream: 340, bodyPk: 0.11, creamPk: 0.08, noisePk: 0.035, bodyDur: 0.065, creamDur: 0.055, tip: 0.008 },
+      key:   { body: 120, cream: 260, bodyPk: 0.16, creamPk: 0.09, noisePk: 0.04,  bodyDur: 0.085, creamDur: 0.07, tip: 0.01 },
+    };
+    const p = presets[kind] || presets.key;
+
+    // Soft lowpass bus so nothing gets harsh
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.frequency.value = 3200;
+    tone.Q.value = 0.6;
+    const shelf = ctx.createBiquadFilter();
+    shelf.type = "lowshelf";
+    shelf.frequency.value = 180;
+    shelf.gain.value = 3;
+    tone.connect(shelf);
+    shelf.connect(uiGain);
+
+    // 1) Deep body thock (sine, quick pitch drop)
+    const body = ctx.createOscillator();
+    body.type = "sine";
+    const bodyHz = p.body * jitter;
+    body.frequency.setValueAtTime(bodyHz * 1.55, t);
+    body.frequency.exponentialRampToValueAtTime(bodyHz * 0.55, t + p.bodyDur * 0.7);
+    const bodyG = ctx.createGain();
+    bodyG.gain.setValueAtTime(0.0001, t);
+    bodyG.gain.exponentialRampToValueAtTime(p.bodyPk, t + 0.003);
+    bodyG.gain.exponentialRampToValueAtTime(0.0001, t + p.bodyDur);
+    body.connect(bodyG);
+    bodyG.connect(tone);
+    body.start(t);
+    body.stop(t + p.bodyDur + 0.02);
+
+    // 2) Creamy mid body (triangle, slightly delayed — the "squash")
+    const cream = ctx.createOscillator();
+    cream.type = "triangle";
+    const creamHz = p.cream * jitter;
+    cream.frequency.setValueAtTime(creamHz * 1.25, t + 0.002);
+    cream.frequency.exponentialRampToValueAtTime(creamHz * 0.7, t + p.creamDur);
+    const creamG = ctx.createGain();
+    creamG.gain.setValueAtTime(0.0001, t);
+    creamG.gain.exponentialRampToValueAtTime(p.creamPk, t + 0.006);
+    creamG.gain.exponentialRampToValueAtTime(0.0001, t + p.creamDur);
+    // soften triangle harmonics
+    const creamLp = ctx.createBiquadFilter();
+    creamLp.type = "lowpass";
+    creamLp.frequency.value = 900;
+    creamLp.Q.value = 0.5;
+    cream.connect(creamLp);
+    creamLp.connect(creamG);
+    creamG.connect(tone);
+    cream.start(t);
+    cream.stop(t + p.creamDur + 0.02);
+
+    // 3) Soft plastic tip — short filtered noise (not a harsh click)
+    const nLen = Math.floor(ctx.sampleRate * 0.025);
+    const nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
+    const nData = nBuf.getChannelData(0);
+    for (let i = 0; i < nLen; i++) {
+      const env = Math.pow(1 - i / nLen, 2.2);
+      nData[i] = (Math.random() * 2 - 1) * env;
     }
-    o.connect(g);
-    g.connect(master);
-
-    // click noise
     const noise = ctx.createBufferSource();
-    const nb = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
-    const d = nb.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-    noise.buffer = nb;
-    const ng = ctx.createGain();
-    ng.gain.value = kind === "chip" ? 0.04 : 0.06;
-    const nf = ctx.createBiquadFilter();
-    nf.type = "highpass";
-    nf.frequency.value = 2000;
-    noise.connect(nf);
-    nf.connect(ng);
-    ng.connect(master);
-
-    o.start(t);
-    o.stop(t + 0.12);
+    noise.buffer = nBuf;
+    const nBp = ctx.createBiquadFilter();
+    nBp.type = "bandpass";
+    nBp.frequency.value = 1800 + r() * 600;
+    nBp.Q.value = 0.9;
+    const nLp = ctx.createBiquadFilter();
+    nLp.type = "lowpass";
+    nLp.frequency.value = 4200;
+    const nG = ctx.createGain();
+    nG.gain.setValueAtTime(0.0001, t);
+    nG.gain.exponentialRampToValueAtTime(p.noisePk, t + 0.0015);
+    nG.gain.exponentialRampToValueAtTime(0.0001, t + p.tip);
+    noise.connect(nBp);
+    nBp.connect(nLp);
+    nLp.connect(nG);
+    nG.connect(tone);
     noise.start(t);
     noise.stop(t + 0.03);
+
+    // 4) Play button gets a little extra sub "thunk"
+    if (kind === "play") {
+      const sub = ctx.createOscillator();
+      sub.type = "sine";
+      sub.frequency.setValueAtTime(62 * jitter, t);
+      sub.frequency.exponentialRampToValueAtTime(38, t + 0.1);
+      const subG = ctx.createGain();
+      subG.gain.setValueAtTime(0.0001, t);
+      subG.gain.exponentialRampToValueAtTime(0.12, t + 0.004);
+      subG.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      sub.connect(subG);
+      subG.connect(tone);
+      sub.start(t);
+      sub.stop(t + 0.16);
+    }
   }
 
   return {
