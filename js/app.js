@@ -16,10 +16,13 @@
   let fxOn = true;
   let playerHidden = false;
 
-  // Fullscreen drag state (stored as top-left pixel coords when user has moved it)
-  let dragPos = null; // { x, y } | null = default bottom-center
+  // Fullscreen drag: last top-left position in px (null = default bottom-center)
+  let savedPos = null;
   let dragging = false;
-  let dragOffset = { x: 0, y: 0 };
+  let dragMoved = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let activePointerId = null;
 
   const $ = (sel) => document.querySelector(sel);
   const sceneArt = $("#sceneArt");
@@ -37,7 +40,7 @@
   const btnHide = $("#btnHide");
   const btnShow = $("#btnShow");
   const player = $("#player");
-  const playerDrag = $("#playerDrag");
+  const playerHeader = $("#playerDrag");
   const gate = $("#gate");
   const sceneRail = document.querySelector(".scene-rail");
 
@@ -78,7 +81,7 @@
     });
   }
 
-  function selectScene(i, { restartAudio = true } = {}) {
+  function selectScene(i) {
     index = (i + SCENES.length) % SCENES.length;
     const scene = SCENES[index];
 
@@ -93,7 +96,7 @@
     updateRail();
     ParticleFX.setMode(scene.id);
 
-    if (playing && restartAudio) {
+    if (playing) {
       AmbientAudio.play(scene.id);
     }
   }
@@ -117,44 +120,48 @@
     }
   }
 
-  /* ----- Hide / show player ----- */
+  /* ----- Hide / show ----- */
   function setPlayerHidden(hidden) {
-    playerHidden = hidden;
-    player.classList.toggle("is-hidden", hidden);
-    player.setAttribute("aria-hidden", hidden ? "true" : "false");
-    if (hidden) {
-      btnShow.hidden = false;
-    } else {
-      btnShow.hidden = true;
-    }
+    playerHidden = !!hidden;
+    document.body.classList.toggle("player-collapsed", playerHidden);
+    player.setAttribute("aria-hidden", playerHidden ? "true" : "false");
+    btnShow.setAttribute("aria-hidden", playerHidden ? "false" : "true");
   }
 
-  /* ----- Fullscreen player position ----- */
-  function applyPlayerPos() {
-    if (!document.body.classList.contains("fullscreen")) {
-      player.style.removeProperty("--player-x");
-      player.style.removeProperty("--player-y");
-      player.style.removeProperty("--player-bottom");
-      player.style.removeProperty("--player-transform");
+  /* ----- Fullscreen position (direct styles — reliable) ----- */
+  function isFullscreenUi() {
+    return document.body.classList.contains("fullscreen");
+  }
+
+  function clearInlinePos() {
+    player.style.left = "";
+    player.style.top = "";
+    player.style.right = "";
+    player.style.bottom = "";
+    player.style.transform = "";
+  }
+
+  function applySavedPos() {
+    if (!isFullscreenUi()) {
+      clearInlinePos();
       return;
     }
-    if (dragPos) {
-      player.style.setProperty("--player-x", dragPos.x + "px");
-      player.style.setProperty("--player-y", dragPos.y + "px");
-      player.style.setProperty("--player-bottom", "auto");
-      player.style.setProperty("--player-transform", "none");
-    } else {
-      player.style.removeProperty("--player-x");
-      player.style.removeProperty("--player-y");
-      player.style.removeProperty("--player-bottom");
-      player.style.removeProperty("--player-transform");
+    if (!savedPos) {
+      clearInlinePos();
+      return;
     }
+    const pos = clampPos(savedPos.x, savedPos.y);
+    savedPos = pos;
+    player.style.left = pos.x + "px";
+    player.style.top = pos.y + "px";
+    player.style.right = "auto";
+    player.style.bottom = "auto";
+    player.style.transform = "none";
   }
 
   function clampPos(x, y) {
-    const rect = player.getBoundingClientRect();
-    const w = rect.width || 320;
-    const h = rect.height || 200;
+    const w = player.offsetWidth || 320;
+    const h = player.offsetHeight || 200;
     const pad = 8;
     const maxX = Math.max(pad, window.innerWidth - w - pad);
     const maxY = Math.max(pad, window.innerHeight - h - pad);
@@ -164,73 +171,90 @@
     };
   }
 
-  function isDragHandleTarget(target) {
-    if (!target || !playerDrag.contains(target)) return false;
-    // Don't start drag from the hide button
-    if (target.closest("#btnHide")) return false;
-    return true;
+  function canStartDrag(target) {
+    if (!isFullscreenUi() || playerHidden || !target) return false;
+    // Never drag from interactive controls
+    if (target.closest("button, input, a, label, .scene-rail, .controls, .sliders")) {
+      return false;
+    }
+    // Drag from brand, LCD, or empty header area
+    return !!(
+      target.closest(".brand") ||
+      target.closest(".lcd") ||
+      target === playerHeader
+    );
   }
 
-  function onDragStart(e) {
-    if (!document.body.classList.contains("fullscreen")) return;
-    if (playerHidden) return;
-    if (!isDragHandleTarget(e.target)) return;
-
-    // Only primary button / touch
+  function onPointerDown(e) {
+    if (!canStartDrag(e.target)) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
     const rect = player.getBoundingClientRect();
     dragging = true;
+    dragMoved = false;
+    activePointerId = e.pointerId;
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
     player.classList.add("is-dragging");
-    dragOffset.x = e.clientX - rect.left;
-    dragOffset.y = e.clientY - rect.top;
 
-    // Switch to explicit coords immediately so there's no jump
-    dragPos = { x: rect.left, y: rect.top };
-    applyPlayerPos();
+    // Snap to explicit coords so first move doesn't jump
+    savedPos = { x: rect.left, y: rect.top };
+    applySavedPos();
 
     try {
-      playerDrag.setPointerCapture(e.pointerId);
+      player.setPointerCapture(e.pointerId);
     } catch (_) { /* ignore */ }
+
     e.preventDefault();
   }
 
-  function onDragMove(e) {
-    if (!dragging) return;
-    dragPos = clampPos(e.clientX - dragOffset.x, e.clientY - dragOffset.y);
-    applyPlayerPos();
+  function onPointerMove(e) {
+    if (!dragging || e.pointerId !== activePointerId) return;
+    const next = clampPos(e.clientX - dragOffsetX, e.clientY - dragOffsetY);
+    if (!dragMoved) {
+      const dx = next.x - savedPos.x;
+      const dy = next.y - savedPos.y;
+      if (dx * dx + dy * dy > 9) dragMoved = true;
+    }
+    savedPos = next;
+    player.style.left = next.x + "px";
+    player.style.top = next.y + "px";
+    player.style.right = "auto";
+    player.style.bottom = "auto";
+    player.style.transform = "none";
   }
 
-  function onDragEnd(e) {
-    if (!dragging) return;
+  function onPointerUp(e) {
+    if (!dragging || (activePointerId != null && e.pointerId !== activePointerId)) return;
     dragging = false;
+    activePointerId = null;
     player.classList.remove("is-dragging");
     try {
-      playerDrag.releasePointerCapture(e.pointerId);
+      player.releasePointerCapture(e.pointerId);
     } catch (_) { /* ignore */ }
   }
 
-  playerDrag.addEventListener("pointerdown", onDragStart);
-  window.addEventListener("pointermove", onDragMove);
-  window.addEventListener("pointerup", onDragEnd);
-  window.addEventListener("pointercancel", onDragEnd);
+  // Attach drag to player (capture phase not needed; header children bubble)
+  player.addEventListener("pointerdown", onPointerDown);
+  player.addEventListener("pointermove", onPointerMove);
+  player.addEventListener("pointerup", onPointerUp);
+  player.addEventListener("pointercancel", onPointerUp);
 
   window.addEventListener("resize", () => {
-    if (dragPos && document.body.classList.contains("fullscreen")) {
-      dragPos = clampPos(dragPos.x, dragPos.y);
-      applyPlayerPos();
-    }
+    if (savedPos && isFullscreenUi()) applySavedPos();
   });
 
   function enterFullscreenUi() {
     document.body.classList.add("fullscreen");
-    applyPlayerPos();
+    // next frame so layout is measured correctly
+    requestAnimationFrame(applySavedPos);
   }
 
   function exitFullscreenUi() {
     document.body.classList.remove("fullscreen");
-    // Keep dragPos so re-entering fullscreen restores last spot
-    applyPlayerPos();
+    player.classList.remove("is-dragging");
+    dragging = false;
+    clearInlinePos();
   }
 
   // --- Events ---
@@ -260,7 +284,6 @@
     selectScene(index + 1);
   });
 
-  // Volume + soft stepped thocks while dragging
   let lastVolThock = 0;
   volSlider.addEventListener("input", () => {
     const v = Number(volSlider.value);
@@ -296,13 +319,23 @@
   });
 
   btnHide.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     press(btnHide);
     AmbientAudio.thock("chip");
     setPlayerHidden(true);
   });
 
-  btnShow.addEventListener("click", () => {
+  // Also support pointerup in case click is swallowed on some devices
+  btnHide.addEventListener("pointerup", (e) => {
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  btnShow.addEventListener("click", (e) => {
+    e.preventDefault();
     AmbientAudio.thock("chip");
     setPlayerHidden(false);
   });
@@ -310,8 +343,9 @@
   btnFs.addEventListener("click", async () => {
     press(btnFs);
     AmbientAudio.thock("chip");
+    const active = document.fullscreenElement || document.webkitFullscreenElement;
     try {
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (!active) {
         const el = document.documentElement;
         if (el.requestFullscreen) await el.requestFullscreen();
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -322,24 +356,21 @@
         exitFullscreenUi();
       }
     } catch (_) {
-      // iOS may not support Fullscreen API — fake it with CSS
-      if (document.body.classList.contains("fullscreen")) {
-        exitFullscreenUi();
-      } else {
-        enterFullscreenUi();
-      }
+      // iOS / blocked Fullscreen API — CSS-only fullscreen
+      if (isFullscreenUi()) exitFullscreenUi();
+      else enterFullscreenUi();
     }
   });
 
   document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement) {
-      exitFullscreenUi();
-    } else {
-      enterFullscreenUi();
-    }
+    if (document.fullscreenElement) enterFullscreenUi();
+    else exitFullscreenUi();
+  });
+  document.addEventListener("webkitfullscreenchange", () => {
+    if (document.webkitFullscreenElement) enterFullscreenUi();
+    else exitFullscreenUi();
   });
 
-  // Keyboard
   window.addEventListener("keydown", (e) => {
     if (gate && !gate.classList.contains("hidden")) {
       if (e.code === "Space" || e.code === "Enter") {

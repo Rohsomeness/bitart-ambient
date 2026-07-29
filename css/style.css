@@ -143,18 +143,23 @@ body {
 .player {
   flex-shrink: 0;
   width: min(340px, 100%);
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  z-index: 20;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  z-index: 40;
 }
 
-.player.is-hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(12px) scale(0.96);
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+/* Collapsed via body class — reliable hide */
+body.player-collapsed .player {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transform: translateY(16px) scale(0.96);
+  /* Drop out of layout so the stage expands */
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .player-bezel {
@@ -175,21 +180,6 @@ body {
   align-items: stretch;
   margin-bottom: 7px;
   cursor: default;
-}
-
-.drag-grip {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  flex-shrink: 0;
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: -2px;
-  color: var(--muted);
-  opacity: 0.55;
-  writing-mode: vertical-lr;
-  transform: rotate(180deg);
 }
 
 .brand {
@@ -617,17 +607,17 @@ input[type="range"]::-moz-range-thumb {
 
 .hint-mobile { display: none; }
 
-/* Peek tab when player is hidden */
+/* Peek tab — only visible when player is collapsed */
 .player-peek {
   position: fixed;
   left: 50%;
-  bottom: calc(12px + var(--safe-b));
-  transform: translateX(-50%);
-  z-index: 30;
+  bottom: calc(14px + var(--safe-b));
+  transform: translateX(-50%) translateY(12px);
+  z-index: 60;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: 2px solid #4a4060;
   border-radius: 999px;
   cursor: pointer;
@@ -640,11 +630,17 @@ input[type="range"]::-moz-range-thumb {
     0 3px 0 #1a1520,
     0 8px 18px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  transition: transform 0.15s ease, opacity 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.player-peek[hidden] {
-  display: none !important;
+body.player-collapsed .player-peek {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
 }
 
 .player-peek:active {
@@ -657,6 +653,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   background: #5cff9a;
   box-shadow: 0 0 8px #5cff9a;
+  flex-shrink: 0;
 }
 
 body:not(.is-playing) .peek-dot {
@@ -744,65 +741,54 @@ body.fullscreen .stage {
   box-shadow: none;
 }
 
+/* JS sets left/top/transform directly when moved; defaults via CSS */
 body.fullscreen .player {
-  position: fixed;
-  /* JS sets --player-x / --player-y when dragged; default bottom-center */
-  left: var(--player-x, 50%);
-  top: var(--player-y, auto);
-  bottom: var(--player-bottom, calc(14px + var(--safe-b)));
+  position: fixed !important;
+  left: 50%;
+  bottom: calc(14px + var(--safe-b));
+  top: auto;
   right: auto;
-  transform: var(--player-transform, translateX(-50%));
+  transform: translateX(-50%);
   width: min(320px, calc(100vw - 20px));
-  z-index: 20;
+  z-index: 40;
   margin: 0;
-  /* Stay visible in fullscreen so you can drag it; soft fade only if user wants hide */
   opacity: 1;
   pointer-events: auto;
-  transition: opacity 0.25s ease, transform 0.2s ease, box-shadow 0.15s ease;
+  visibility: visible;
+  transition: opacity 0.22s ease, box-shadow 0.15s ease;
 }
 
-body.fullscreen .player.is-hidden {
-  opacity: 0;
-  pointer-events: none;
+body.fullscreen.player-collapsed .player {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 body.fullscreen .player.is-dragging {
-  transition: none;
+  transition: none !important;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   cursor: grabbing;
+  z-index: 50;
 }
 
-body.fullscreen .player-header {
+/* Drag from brand or LCD (not buttons) */
+body.fullscreen .player-header .brand,
+body.fullscreen .player-header .lcd {
   cursor: grab;
   touch-action: none;
+  user-select: none;
 }
 
-body.fullscreen .player.is-dragging .player-header {
+body.fullscreen .player.is-dragging .player-header .brand,
+body.fullscreen .player.is-dragging .player-header .lcd {
   cursor: grabbing;
-}
-
-body.fullscreen .drag-grip {
-  display: flex;
 }
 
 body.fullscreen .player-footer { display: none; }
 
-body.fullscreen .btn-hide,
-body.fullscreen .btn-chip,
-body.fullscreen .btn-round,
-body.fullscreen .btn-play,
-body.fullscreen input {
+body.fullscreen .btn-hide {
   cursor: pointer;
-}
-
-body.fullscreen .player-header .lcd,
-body.fullscreen .player-header .brand {
-  pointer-events: none;
-}
-
-/* Peek can sit wherever — still bottom-center by default */
-body.fullscreen .player-peek {
-  z-index: 35;
+  touch-action: manipulation;
 }
 
 /* ===== Responsive ===== */

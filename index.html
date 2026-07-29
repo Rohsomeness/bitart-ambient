@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=4" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%232a2438'/%3E%3Crect x='4' y='8' width='8' height='5' fill='%23e8a05c'/%3E%3Crect x='6' y='5' width='4' height='4' fill='%23ffd36a'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -28,9 +28,8 @@
     <!-- Retro player shell -->
     <div class="player" id="player" role="region" aria-label="Bitart ambient player">
       <div class="player-bezel">
-        <header class="player-header" id="playerDrag" title="Drag in fullscreen">
-          <div class="drag-grip" aria-hidden="true">⋮⋮</div>
-          <div class="brand">
+        <header class="player-header" id="playerDrag">
+          <div class="brand" id="dragHandle">
             <span class="brand-dot"></span>
             <span class="brand-name">BITART</span>
             <span class="brand-sub">AMBIENT</span>
@@ -84,15 +83,15 @@
         </div>
 
         <footer class="player-footer">
-          <span class="hint">H hide · drag in fullscreen</span>
+          <span class="hint">H hide · drag header in fullscreen</span>
           <span class="hint-mobile">H hide · swipe scenes</span>
         </footer>
       </div>
     </div>
   </div>
 
-  <!-- Re-open player when hidden -->
-  <button type="button" class="player-peek" id="btnShow" aria-label="Show player" title="Show player (H)" hidden>
+  <!-- Re-open player when collapsed -->
+  <button type="button" class="player-peek" id="btnShow" aria-label="Show player" title="Show player (H)">
     <span class="peek-dot"></span>
     <span class="peek-label">BITART</span>
     <span class="peek-chevron">▴</span>
@@ -110,8 +109,8 @@
     </div>
   </div>
 
-  <script src="js/audio.js"></script>
-  <script src="js/particles.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/audio.js?v=4"></script>
+  <script src="js/particles.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>
