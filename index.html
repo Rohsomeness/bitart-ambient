@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#2a2438" />
+  <meta name="description" content="Bitart Ambient — cute retro peaceful screensavers with cozy scenes and soft soundscapes." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Bitart Ambient</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%232a2438'/%3E%3Crect x='4' y='8' width='8' height='5' fill='%23e8a05c'/%3E%3Crect x='6' y='5' width='4' height='4' fill='%23ffd36a'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="crt-overlay" aria-hidden="true"></div>
+  <div class="app" id="app">
+    <!-- Scene stage -->
+    <div class="stage" id="stage">
+      <img class="scene-art" id="sceneArt" alt="" draggable="false" />
+      <canvas id="particles" aria-hidden="true"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+      <div class="scanlines" aria-hidden="true"></div>
+    </div>
+
+    <!-- Retro player shell -->
+    <div class="player" id="player" role="region" aria-label="Bitart ambient player">
+      <div class="player-bezel">
+        <header class="player-header">
+          <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">BITART</span>
+            <span class="brand-sub">AMBIENT</span>
+          </div>
+          <div class="lcd" id="lcd" aria-live="polite">
+            <div class="lcd-row">
+              <span class="lcd-label">SCENE</span>
+              <span class="lcd-value" id="lcdScene">FIREPLACE</span>
+            </div>
+            <div class="lcd-row">
+              <span class="lcd-label">STATUS</span>
+              <span class="lcd-value lcd-blink" id="lcdStatus">READY</span>
+            </div>
+            <div class="eq" id="eq" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Scene picker -->
+        <div class="scene-rail" role="tablist" aria-label="Scenes">
+          <!-- filled by JS -->
+        </div>
+
+        <!-- Transport -->
+        <div class="controls">
+          <button type="button" class="btn btn-round btn-prev" id="btnPrev" aria-label="Previous scene" title="Previous">
+            <span class="btn-face">◀</span>
+          </button>
+          <button type="button" class="btn btn-play" id="btnPlay" aria-label="Play or pause" title="Play">
+            <span class="btn-face" id="playIcon">▶</span>
+          </button>
+          <button type="button" class="btn btn-round btn-next" id="btnNext" aria-label="Next scene" title="Next">
+            <span class="btn-face">▶</span>
+          </button>
+        </div>
+
+        <div class="sliders">
+          <label class="slider-block">
+            <span class="slider-label">VOL</span>
+            <input type="range" id="volSlider" min="0" max="100" value="55" aria-label="Volume" />
+            <span class="slider-val" id="volVal">55</span>
+          </label>
+          <div class="toggle-row">
+            <button type="button" class="btn btn-chip" id="btnMute" aria-pressed="false" title="Mute">🔊</button>
+            <button type="button" class="btn btn-chip" id="btnFx" aria-pressed="true" title="Particles">✦</button>
+            <button type="button" class="btn btn-chip" id="btnFs" title="Fullscreen">⛶</button>
+          </div>
+        </div>
+
+        <footer class="player-footer">
+          <span class="hint">tap a scene · press space to play</span>
+          <span class="hint-mobile">swipe scenes · tap ▶</span>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- First-run gate (audio needs gesture) -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <div class="gate-pixel" aria-hidden="true">🔥</div>
+      <h1>Bitart Ambient</h1>
+      <p>peaceful pixel screensavers<br />with soft soundscapes</p>
+      <button type="button" class="btn btn-play gate-btn" id="btnEnter">
+        <span class="btn-face">PRESS START</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
