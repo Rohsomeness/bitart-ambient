@@ -34,4 +34,4 @@ npx serve .
 
 This repo is set up for GitHub Pages from the `main` branch root.
 
-Live site: *(enabled after push + Pages setup)*
+**Live site:** https://rohsomeness.github.io/bitart-ambient/
