@@ -19,12 +19,25 @@ const AmbientAudio = (() => {
     ctx = new AC();
     master = ctx.createGain();
     master.gain.value = volume;
+
+    // Global warmth: soft lowpass so ambience never gets piercing
+    const warmth = ctx.createBiquadFilter();
+    warmth.type = "lowpass";
+    warmth.frequency.value = 2200;
+    warmth.Q.value = 0.5;
+    const airShelf = ctx.createBiquadFilter();
+    airShelf.type = "highshelf";
+    airShelf.frequency.value = 1800;
+    airShelf.gain.value = -8; // tame highs further
+
     muteGain = ctx.createGain();
     muteGain.gain.value = muted ? 0 : 1;
-    master.connect(muteGain);
+    master.connect(warmth);
+    warmth.connect(airShelf);
+    airShelf.connect(muteGain);
     muteGain.connect(ctx.destination);
 
-    // Dedicated soft bus for UI clicks (bypasses ambience mute)
+    // Dedicated soft bus for UI clicks (bypasses ambience mute + warmth)
     uiGain = ctx.createGain();
     uiGain.gain.value = 0.85;
     uiGain.connect(ctx.destination);
@@ -228,10 +241,10 @@ const AmbientAudio = (() => {
     const bed = makeNoise("pink");
     const bedHp = ctx.createBiquadFilter();
     bedHp.type = "highpass";
-    bedHp.frequency.value = 200;
+    bedHp.frequency.value = 80;
     const bedLp = ctx.createBiquadFilter();
     bedLp.type = "lowpass";
-    bedLp.frequency.value = 900;
+    bedLp.frequency.value = 650;
     const bedGain = ctx.createGain();
     bedGain.gain.value = 0.028;
     bed.out.connect(bedHp);
@@ -257,116 +270,112 @@ const AmbientAudio = (() => {
     bedFlicker._raf = requestAnimationFrame(bedTick);
     nodes.push(bedFlicker);
 
-    // --- Crackles: short bright noise snaps (sap / twigs) ---
+    // --- Crackles: warmer, lower mid snaps (no piercing highs) ---
     function scheduleCrackle() {
       if (!playing || ctx.state !== "running") return;
       const roll = Math.random();
       if (roll < 0.55) {
-        // tiny tick
+        // soft tick
         fireNoiseBurst({
-          duration: 0.018 + Math.random() * 0.025,
-          peak: 0.08 + Math.random() * 0.1,
-          attack: 0.001,
-          highpass: 1800 + Math.random() * 2200,
-          lowpass: 7000 + Math.random() * 4000,
-          band: 2500 + Math.random() * 3000,
-          bandQ: 0.9 + Math.random() * 1.2,
-          color: "white",
+          duration: 0.02 + Math.random() * 0.03,
+          peak: 0.07 + Math.random() * 0.08,
+          attack: 0.0015,
+          highpass: 400 + Math.random() * 400,
+          lowpass: 1600 + Math.random() * 800,
+          band: 700 + Math.random() * 500,
+          bandQ: 0.8 + Math.random() * 0.6,
+          color: "pink",
         });
       } else if (roll < 0.88) {
-        // classic mid crackle
+        // classic mid crackle (lower)
         fireNoiseBurst({
-          duration: 0.035 + Math.random() * 0.05,
-          peak: 0.14 + Math.random() * 0.16,
-          attack: 0.0015,
-          highpass: 900 + Math.random() * 800,
-          lowpass: 4500 + Math.random() * 2500,
-          band: 1400 + Math.random() * 1800,
-          bandQ: 1.0 + Math.random() * 0.8,
+          duration: 0.04 + Math.random() * 0.05,
+          peak: 0.12 + Math.random() * 0.12,
+          attack: 0.002,
+          highpass: 250 + Math.random() * 300,
+          lowpass: 1400 + Math.random() * 700,
+          band: 500 + Math.random() * 500,
+          bandQ: 0.8 + Math.random() * 0.5,
           color: "pink",
         });
       } else {
-        // longer sizzle / spit
+        // longer low spit
         fireNoiseBurst({
-          duration: 0.08 + Math.random() * 0.12,
-          peak: 0.1 + Math.random() * 0.12,
-          attack: 0.003,
-          highpass: 600,
-          lowpass: 3500,
-          band: 1200 + Math.random() * 900,
-          bandQ: 0.7,
-          color: "pink",
+          duration: 0.09 + Math.random() * 0.12,
+          peak: 0.09 + Math.random() * 0.1,
+          attack: 0.004,
+          highpass: 180,
+          lowpass: 1100,
+          band: 450 + Math.random() * 350,
+          bandQ: 0.6,
+          color: "brown",
         });
-        // sometimes a second echo-tick
         if (Math.random() < 0.45) {
           setTimeout(() => {
             if (!playing) return;
             fireNoiseBurst({
-              duration: 0.02,
-              peak: 0.06 + Math.random() * 0.06,
-              attack: 0.001,
-              highpass: 2000,
-              lowpass: 8000,
-              band: 3200,
-              bandQ: 1.4,
-              color: "white",
+              duration: 0.025,
+              peak: 0.05 + Math.random() * 0.05,
+              attack: 0.002,
+              highpass: 350,
+              lowpass: 1400,
+              band: 650,
+              bandQ: 1.0,
+              color: "pink",
             });
           }, 30 + Math.random() * 60);
         }
       }
     }
 
-    // --- Pops: deeper thump + short noise (log settling) ---
+    // --- Pops: deeper thump + soft mid snap ---
     function schedulePop() {
       if (!playing || ctx.state !== "running") return;
       const t = ctx.currentTime;
-      const depth = 0.5 + Math.random() * 0.5; // how "thunky"
+      const depth = 0.5 + Math.random() * 0.5;
 
-      // body thump (pitch drops quickly — wood knock)
       const o = ctx.createOscillator();
       o.type = "sine";
-      const base = 70 + Math.random() * 90;
-      o.frequency.setValueAtTime(base * (1.4 + Math.random() * 0.6), t);
-      o.frequency.exponentialRampToValueAtTime(base * 0.45, t + 0.06 + Math.random() * 0.05);
+      const base = 45 + Math.random() * 55;
+      o.frequency.setValueAtTime(base * (1.3 + Math.random() * 0.5), t);
+      o.frequency.exponentialRampToValueAtTime(base * 0.45, t + 0.07 + Math.random() * 0.05);
       const og = ctx.createGain();
-      const thumpPeak = (0.07 + Math.random() * 0.08) * depth;
+      const thumpPeak = (0.08 + Math.random() * 0.08) * depth;
       og.gain.setValueAtTime(0.0001, t);
       og.gain.exponentialRampToValueAtTime(thumpPeak, t + 0.004);
-      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.12 + Math.random() * 0.08);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.14 + Math.random() * 0.08);
       o.connect(og);
       og.connect(master);
       o.start(t);
-      o.stop(t + 0.25);
+      o.stop(t + 0.28);
 
-      // high snap on top of the thump
       fireNoiseBurst({
-        duration: 0.025 + Math.random() * 0.03,
-        peak: 0.12 + Math.random() * 0.14,
-        attack: 0.001,
-        highpass: 1200,
-        lowpass: 5500,
-        band: 2000 + Math.random() * 1500,
-        bandQ: 1.5,
-        color: "white",
+        duration: 0.03 + Math.random() * 0.03,
+        peak: 0.09 + Math.random() * 0.1,
+        attack: 0.0015,
+        highpass: 300,
+        lowpass: 1600,
+        band: 700 + Math.random() * 400,
+        bandQ: 1.0,
+        color: "pink",
       });
 
-      // occasional ember cascade after a big pop
       if (Math.random() < 0.4) {
-        const n = 2 + Math.floor(Math.random() * 4);
+        const n = 2 + Math.floor(Math.random() * 3);
         for (let i = 0; i < n; i++) {
           setTimeout(() => {
             if (!playing) return;
             fireNoiseBurst({
-              duration: 0.015 + Math.random() * 0.02,
-              peak: 0.05 + Math.random() * 0.07,
-              attack: 0.001,
-              highpass: 2200,
-              lowpass: 9000,
-              band: 3000 + Math.random() * 2500,
-              bandQ: 1.2,
-              color: "white",
+              duration: 0.02 + Math.random() * 0.02,
+              peak: 0.04 + Math.random() * 0.05,
+              attack: 0.002,
+              highpass: 280,
+              lowpass: 1300,
+              band: 550 + Math.random() * 400,
+              bandQ: 0.9,
+              color: "pink",
             });
-          }, 40 + i * (25 + Math.random() * 40));
+          }, 40 + i * (30 + Math.random() * 40));
         }
       }
     }
@@ -407,16 +416,16 @@ const AmbientAudio = (() => {
 
   function buildRainforest() {
     const nodes = [];
-    // waterfall hiss
-    const n = makeNoise("white");
+    // waterfall — warm pink rumble, not bright hiss
+    const n = makeNoise("pink");
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 2800;
+    lp.frequency.value = 1100;
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 400;
+    hp.frequency.value = 80;
     const g = ctx.createGain();
-    g.gain.value = 0.07;
+    g.gain.value = 0.09;
     n.out.connect(hp);
     hp.connect(lp);
     lp.connect(g);
@@ -424,35 +433,39 @@ const AmbientAudio = (() => {
     n.source.start();
     nodes.push(n.source, lp, hp, g);
 
-    // soft forest pad
-    [174.6, 220, 261.6].forEach((f, i) => {
+    // soft forest pad (lower octave)
+    [87.3, 110, 130.8].forEach((f, i) => {
       const p = padTone(f, i % 2 ? "triangle" : "sine");
-      p.gain.gain.setTargetAtTime(0.012, ctx.currentTime, 2);
+      p.gain.gain.setTargetAtTime(0.014, ctx.currentTime, 2);
       p.gain.connect(master);
       nodes.push(p.osc, p.gain);
     });
 
-    // bird chirps
+    // soft distant coos (not piercing chirps)
     const birds = { _interval: null };
     birds._interval = setInterval(() => {
       if (!playing || ctx.state !== "running") return;
-      if (Math.random() > 0.35) return;
+      if (Math.random() > 0.4) return;
       const t = ctx.currentTime;
       const o = ctx.createOscillator();
       o.type = "sine";
-      const base = 1800 + Math.random() * 1600;
+      const base = 420 + Math.random() * 280;
       o.frequency.setValueAtTime(base, t);
-      o.frequency.exponentialRampToValueAtTime(base * (1.2 + Math.random() * 0.4), t + 0.08);
-      o.frequency.exponentialRampToValueAtTime(base * 0.7, t + 0.18);
+      o.frequency.exponentialRampToValueAtTime(base * (1.08 + Math.random() * 0.12), t + 0.1);
+      o.frequency.exponentialRampToValueAtTime(base * 0.85, t + 0.28);
       const bg = ctx.createGain();
-      bg.gain.setValueAtTime(0, t);
-      bg.gain.linearRampToValueAtTime(0.03, t + 0.02);
-      bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-      o.connect(bg);
+      bg.gain.setValueAtTime(0.0001, t);
+      bg.gain.linearRampToValueAtTime(0.02, t + 0.03);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      const soft = ctx.createBiquadFilter();
+      soft.type = "lowpass";
+      soft.frequency.value = 1200;
+      o.connect(soft);
+      soft.connect(bg);
       bg.connect(master);
       o.start(t);
-      o.stop(t + 0.3);
-    }, 900);
+      o.stop(t + 0.4);
+    }, 1200);
     nodes.push(birds);
 
     return nodes;
@@ -460,12 +473,12 @@ const AmbientAudio = (() => {
 
   function buildOcean() {
     const nodes = [];
-    const n = makeNoise("pink");
+    const n = makeNoise("brown");
     const bp = ctx.createBiquadFilter();
     bp.type = "lowpass";
-    bp.frequency.value = 600;
+    bp.frequency.value = 380;
     const g = ctx.createGain();
-    g.gain.value = 0.1;
+    g.gain.value = 0.12;
     n.out.connect(bp);
     bp.connect(g);
     g.connect(master);
@@ -478,17 +491,17 @@ const AmbientAudio = (() => {
     function tick() {
       if (!playing) return;
       const t = ctx.currentTime - start;
-      g.gain.value = 0.06 + 0.05 * (0.5 + 0.5 * Math.sin(t * 0.35));
+      g.gain.value = 0.07 + 0.06 * (0.5 + 0.5 * Math.sin(t * 0.32));
       swell._raf = requestAnimationFrame(tick);
     }
     swell._raf = requestAnimationFrame(tick);
     nodes.push(swell);
 
-    // gentle drone
-    const pad = padTone(98, "sine");
-    pad.gain.gain.setTargetAtTime(0.02, ctx.currentTime, 2);
+    // gentle low drone
+    const pad = padTone(65.4, "sine");
+    pad.gain.gain.setTargetAtTime(0.022, ctx.currentTime, 2);
     pad.gain.connect(master);
-    const pad2 = padTone(146.8, "triangle");
+    const pad2 = padTone(98, "triangle");
     pad2.gain.gain.setTargetAtTime(0.01, ctx.currentTime, 2);
     pad2.gain.connect(master);
     nodes.push(pad.osc, pad.gain, pad2.osc, pad2.gain);
@@ -498,45 +511,62 @@ const AmbientAudio = (() => {
 
   function buildRainy() {
     const nodes = [];
-    // rain
-    const n = makeNoise("white");
+    // Warm rain bed — pink/brown, heavily rolled off (no white hiss)
+    const n = makeNoise("pink");
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 1500;
+    hp.frequency.value = 120;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 900;
     const g = ctx.createGain();
-    g.gain.value = 0.055;
+    g.gain.value = 0.07;
     n.out.connect(hp);
-    hp.connect(g);
+    hp.connect(lp);
+    lp.connect(g);
     g.connect(master);
     n.source.start();
-    nodes.push(n.source, hp, g);
+    nodes.push(n.source, hp, lp, g);
 
-    // soft drops
+    // Distant street rumble under the rain
+    const rumble = makeNoise("brown");
+    const rg = ctx.createGain();
+    rg.gain.value = 0.035;
+    rumble.out.connect(rg);
+    rg.connect(master);
+    rumble.source.start();
+    nodes.push(rumble.source, rg);
+
+    // Soft low drops (muted taps, not glass pings)
     const drops = { _interval: null };
     drops._interval = setInterval(() => {
       if (!playing || ctx.state !== "running") return;
-      const count = 1 + Math.floor(Math.random() * 3);
+      const count = 1 + Math.floor(Math.random() * 2);
       for (let i = 0; i < count; i++) {
-        const t = ctx.currentTime + Math.random() * 0.15;
+        const t = ctx.currentTime + Math.random() * 0.2;
         const o = ctx.createOscillator();
         o.type = "sine";
-        o.frequency.value = 800 + Math.random() * 2200;
+        o.frequency.value = 140 + Math.random() * 220;
         const dg = ctx.createGain();
-        dg.gain.setValueAtTime(0, t);
-        dg.gain.linearRampToValueAtTime(0.018, t + 0.005);
-        dg.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-        o.connect(dg);
+        dg.gain.setValueAtTime(0.0001, t);
+        dg.gain.linearRampToValueAtTime(0.012, t + 0.008);
+        dg.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+        const soft = ctx.createBiquadFilter();
+        soft.type = "lowpass";
+        soft.frequency.value = 700;
+        o.connect(soft);
+        soft.connect(dg);
         dg.connect(master);
         o.start(t);
-        o.stop(t + 0.08);
+        o.stop(t + 0.12);
       }
-    }, 180);
+    }, 280);
     nodes.push(drops);
 
-    // lofi pad
-    [130.8, 164.8, 196].forEach((f) => {
-      const p = padTone(f, "triangle");
-      p.gain.gain.setTargetAtTime(0.014, ctx.currentTime, 2);
+    // deep lofi pad
+    [82.4, 98, 123.5].forEach((f) => {
+      const p = padTone(f, "sine");
+      p.gain.gain.setTargetAtTime(0.016, ctx.currentTime, 2);
       p.gain.connect(master);
       nodes.push(p.osc, p.gain);
     });
@@ -549,30 +579,34 @@ const AmbientAudio = (() => {
     // night air
     const n = makeNoise("brown");
     const g = ctx.createGain();
-    g.gain.value = 0.04;
+    g.gain.value = 0.045;
     n.out.connect(g);
     g.connect(master);
     n.source.start();
     nodes.push(n.source, g);
 
-    // campfire crackle (lighter than fireplace)
+    // campfire crackle (warm mid, not bright)
     const crackle = makeNoise("pink");
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
-    bp.frequency.value = 1100;
-    bp.Q.value = 0.8;
+    bp.frequency.value = 480;
+    bp.Q.value = 0.6;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1200;
     const cg = ctx.createGain();
-    cg.gain.value = 0.07;
+    cg.gain.value = 0.06;
     crackle.out.connect(bp);
-    bp.connect(cg);
+    bp.connect(lp);
+    lp.connect(cg);
     cg.connect(master);
     crackle.source.start();
-    nodes.push(crackle.source, bp, cg);
+    nodes.push(crackle.source, bp, lp, cg);
 
-    // ethereal pad
-    [110, 164.8, 246.9].forEach((f, i) => {
+    // ethereal low pad
+    [73.4, 98, 146.8].forEach((f, i) => {
       const p = padTone(f, i === 1 ? "sine" : "triangle");
-      p.gain.gain.setTargetAtTime(0.016, ctx.currentTime, 3);
+      p.gain.gain.setTargetAtTime(0.018, ctx.currentTime, 3);
       p.gain.connect(master);
       nodes.push(p.osc, p.gain);
     });
@@ -586,9 +620,9 @@ const AmbientAudio = (() => {
     const n = makeNoise("pink");
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 900;
+    lp.frequency.value = 550;
     const g = ctx.createGain();
-    g.gain.value = 0.045;
+    g.gain.value = 0.05;
     n.out.connect(lp);
     lp.connect(g);
     g.connect(master);
@@ -596,46 +630,50 @@ const AmbientAudio = (() => {
     nodes.push(n.source, lp, g);
 
     // gentle water
-    const w = makeNoise("white");
+    const w = makeNoise("pink");
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
-    bp.frequency.value = 600;
-    bp.Q.value = 0.4;
+    bp.frequency.value = 320;
+    bp.Q.value = 0.35;
     const wg = ctx.createGain();
-    wg.gain.value = 0.03;
+    wg.gain.value = 0.035;
     w.out.connect(bp);
     bp.connect(wg);
     wg.connect(master);
     w.source.start();
     nodes.push(w.source, bp, wg);
 
-    // pentatonic soft tones
-    [261.6, 293.7, 329.6, 392, 440].forEach((f, i) => {
-      const p = padTone(f / 2, "sine");
-      p.gain.gain.setTargetAtTime(0.008 + (i % 2) * 0.004, ctx.currentTime, 2.5);
+    // low pentatonic pads
+    [130.8, 146.8, 164.8, 196, 220].forEach((f, i) => {
+      const p = padTone(f, "sine");
+      p.gain.gain.setTargetAtTime(0.01 + (i % 2) * 0.004, ctx.currentTime, 2.5);
       p.gain.connect(master);
       nodes.push(p.osc, p.gain);
     });
 
-    // occasional soft pluck
+    // occasional soft low pluck
     const pluck = { _interval: null };
     pluck._interval = setInterval(() => {
       if (!playing || ctx.state !== "running") return;
       if (Math.random() > 0.4) return;
-      const notes = [523.25, 587.33, 659.25, 783.99, 880];
+      const notes = [196, 220, 246.9, 261.6, 293.7];
       const t = ctx.currentTime;
       const o = ctx.createOscillator();
-      o.type = "triangle";
+      o.type = "sine";
       o.frequency.value = notes[Math.floor(Math.random() * notes.length)];
       const pg = ctx.createGain();
-      pg.gain.setValueAtTime(0, t);
-      pg.gain.linearRampToValueAtTime(0.04, t + 0.01);
-      pg.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
-      o.connect(pg);
+      pg.gain.setValueAtTime(0.0001, t);
+      pg.gain.linearRampToValueAtTime(0.035, t + 0.015);
+      pg.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+      const soft = ctx.createBiquadFilter();
+      soft.type = "lowpass";
+      soft.frequency.value = 900;
+      o.connect(soft);
+      soft.connect(pg);
       pg.connect(master);
       o.start(t);
-      o.stop(t + 1.4);
-    }, 2200);
+      o.stop(t + 1.5);
+    }, 2400);
     nodes.push(pluck);
 
     return nodes;
