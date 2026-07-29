@@ -28,7 +28,8 @@
     <!-- Retro player shell -->
     <div class="player" id="player" role="region" aria-label="Bitart ambient player">
       <div class="player-bezel">
-        <header class="player-header">
+        <header class="player-header" id="playerDrag" title="Drag in fullscreen">
+          <div class="drag-grip" aria-hidden="true">⋮⋮</div>
           <div class="brand">
             <span class="brand-dot"></span>
             <span class="brand-name">BITART</span>
@@ -48,6 +49,7 @@
               <span></span><span></span><span></span><span></span>
             </div>
           </div>
+          <button type="button" class="btn btn-chip btn-hide" id="btnHide" aria-label="Hide player" title="Hide player (H)">▾</button>
         </header>
 
         <!-- Scene picker -->
@@ -82,12 +84,19 @@
         </div>
 
         <footer class="player-footer">
-          <span class="hint">tap a scene · press space to play</span>
-          <span class="hint-mobile">swipe scenes · tap ▶</span>
+          <span class="hint">H hide · drag in fullscreen</span>
+          <span class="hint-mobile">H hide · swipe scenes</span>
         </footer>
       </div>
     </div>
   </div>
+
+  <!-- Re-open player when hidden -->
+  <button type="button" class="player-peek" id="btnShow" aria-label="Show player" title="Show player (H)" hidden>
+    <span class="peek-dot"></span>
+    <span class="peek-label">BITART</span>
+    <span class="peek-chevron">▴</span>
+  </button>
 
   <!-- First-run gate (audio needs gesture) -->
   <div class="gate" id="gate">

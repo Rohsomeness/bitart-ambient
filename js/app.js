@@ -14,7 +14,12 @@
   let index = 0;
   let playing = false;
   let fxOn = true;
-  let hideChromeTimer = null;
+  let playerHidden = false;
+
+  // Fullscreen drag state (stored as top-left pixel coords when user has moved it)
+  let dragPos = null; // { x, y } | null = default bottom-center
+  let dragging = false;
+  let dragOffset = { x: 0, y: 0 };
 
   const $ = (sel) => document.querySelector(sel);
   const sceneArt = $("#sceneArt");
@@ -29,6 +34,10 @@
   const btnMute = $("#btnMute");
   const btnFx = $("#btnFx");
   const btnFs = $("#btnFs");
+  const btnHide = $("#btnHide");
+  const btnShow = $("#btnShow");
+  const player = $("#player");
+  const playerDrag = $("#playerDrag");
   const gate = $("#gate");
   const sceneRail = document.querySelector(".scene-rail");
 
@@ -91,6 +100,7 @@
 
   async function setPlaying(on) {
     playing = on;
+    document.body.classList.toggle("is-playing", on);
     playBtn.classList.toggle("is-playing", on);
     playIcon.textContent = on ? "❚❚" : "▶";
     playBtn.setAttribute("aria-label", on ? "Pause" : "Play");
@@ -107,12 +117,120 @@
     }
   }
 
-  function scheduleChromeHide() {
-    document.body.classList.add("show-chrome");
-    clearTimeout(hideChromeTimer);
-    hideChromeTimer = setTimeout(() => {
-      document.body.classList.remove("show-chrome");
-    }, 3200);
+  /* ----- Hide / show player ----- */
+  function setPlayerHidden(hidden) {
+    playerHidden = hidden;
+    player.classList.toggle("is-hidden", hidden);
+    player.setAttribute("aria-hidden", hidden ? "true" : "false");
+    if (hidden) {
+      btnShow.hidden = false;
+    } else {
+      btnShow.hidden = true;
+    }
+  }
+
+  /* ----- Fullscreen player position ----- */
+  function applyPlayerPos() {
+    if (!document.body.classList.contains("fullscreen")) {
+      player.style.removeProperty("--player-x");
+      player.style.removeProperty("--player-y");
+      player.style.removeProperty("--player-bottom");
+      player.style.removeProperty("--player-transform");
+      return;
+    }
+    if (dragPos) {
+      player.style.setProperty("--player-x", dragPos.x + "px");
+      player.style.setProperty("--player-y", dragPos.y + "px");
+      player.style.setProperty("--player-bottom", "auto");
+      player.style.setProperty("--player-transform", "none");
+    } else {
+      player.style.removeProperty("--player-x");
+      player.style.removeProperty("--player-y");
+      player.style.removeProperty("--player-bottom");
+      player.style.removeProperty("--player-transform");
+    }
+  }
+
+  function clampPos(x, y) {
+    const rect = player.getBoundingClientRect();
+    const w = rect.width || 320;
+    const h = rect.height || 200;
+    const pad = 8;
+    const maxX = Math.max(pad, window.innerWidth - w - pad);
+    const maxY = Math.max(pad, window.innerHeight - h - pad);
+    return {
+      x: Math.min(maxX, Math.max(pad, x)),
+      y: Math.min(maxY, Math.max(pad, y)),
+    };
+  }
+
+  function isDragHandleTarget(target) {
+    if (!target || !playerDrag.contains(target)) return false;
+    // Don't start drag from the hide button
+    if (target.closest("#btnHide")) return false;
+    return true;
+  }
+
+  function onDragStart(e) {
+    if (!document.body.classList.contains("fullscreen")) return;
+    if (playerHidden) return;
+    if (!isDragHandleTarget(e.target)) return;
+
+    // Only primary button / touch
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+
+    const rect = player.getBoundingClientRect();
+    dragging = true;
+    player.classList.add("is-dragging");
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+
+    // Switch to explicit coords immediately so there's no jump
+    dragPos = { x: rect.left, y: rect.top };
+    applyPlayerPos();
+
+    try {
+      playerDrag.setPointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
+    e.preventDefault();
+  }
+
+  function onDragMove(e) {
+    if (!dragging) return;
+    dragPos = clampPos(e.clientX - dragOffset.x, e.clientY - dragOffset.y);
+    applyPlayerPos();
+  }
+
+  function onDragEnd(e) {
+    if (!dragging) return;
+    dragging = false;
+    player.classList.remove("is-dragging");
+    try {
+      playerDrag.releasePointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
+  }
+
+  playerDrag.addEventListener("pointerdown", onDragStart);
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragEnd);
+  window.addEventListener("pointercancel", onDragEnd);
+
+  window.addEventListener("resize", () => {
+    if (dragPos && document.body.classList.contains("fullscreen")) {
+      dragPos = clampPos(dragPos.x, dragPos.y);
+      applyPlayerPos();
+    }
+  });
+
+  function enterFullscreenUi() {
+    document.body.classList.add("fullscreen");
+    applyPlayerPos();
+  }
+
+  function exitFullscreenUi() {
+    document.body.classList.remove("fullscreen");
+    // Keep dragPos so re-entering fullscreen restores last spot
+    applyPlayerPos();
   }
 
   // --- Events ---
@@ -170,6 +288,18 @@
     ParticleFX.setEnabled(fxOn);
   });
 
+  btnHide.addEventListener("click", (e) => {
+    e.stopPropagation();
+    press(btnHide);
+    AmbientAudio.thock("chip");
+    setPlayerHidden(true);
+  });
+
+  btnShow.addEventListener("click", () => {
+    AmbientAudio.thock("chip");
+    setPlayerHidden(false);
+  });
+
   btnFs.addEventListener("click", async () => {
     press(btnFs);
     AmbientAudio.thock("chip");
@@ -178,31 +308,28 @@
         const el = document.documentElement;
         if (el.requestFullscreen) await el.requestFullscreen();
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        document.body.classList.add("fullscreen");
-        scheduleChromeHide();
+        enterFullscreenUi();
       } else {
         if (document.exitFullscreen) await document.exitFullscreen();
         else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        document.body.classList.remove("fullscreen", "show-chrome");
+        exitFullscreenUi();
       }
     } catch (_) {
       // iOS may not support Fullscreen API — fake it with CSS
-      document.body.classList.toggle("fullscreen");
-      if (document.body.classList.contains("fullscreen")) scheduleChromeHide();
+      if (document.body.classList.contains("fullscreen")) {
+        exitFullscreenUi();
+      } else {
+        enterFullscreenUi();
+      }
     }
   });
 
   document.addEventListener("fullscreenchange", () => {
     if (!document.fullscreenElement) {
-      document.body.classList.remove("fullscreen", "show-chrome");
+      exitFullscreenUi();
+    } else {
+      enterFullscreenUi();
     }
-  });
-
-  // Show player chrome on touch/move in fullscreen
-  ["pointerdown", "pointermove", "touchstart"].forEach((ev) => {
-    document.addEventListener(ev, () => {
-      if (document.body.classList.contains("fullscreen")) scheduleChromeHide();
-    }, { passive: true });
   });
 
   // Keyboard
@@ -233,6 +360,11 @@
       case "KeyM":
         btnMute.click();
         break;
+      case "KeyH":
+        e.preventDefault();
+        AmbientAudio.thock("chip");
+        setPlayerHidden(!playerHidden);
+        break;
     }
   });
 
@@ -251,7 +383,6 @@
     selectScene(index + (dx < 0 ? 1 : -1));
   }, { passive: true });
 
-  // Visibility — pause audio work when tab hidden? keep running for screensaver feel; only suspend context if needed
   document.addEventListener("visibilitychange", async () => {
     if (document.hidden) return;
     if (playing) await AmbientAudio.resume();
@@ -267,8 +398,8 @@
   ParticleFX.setMode(SCENES[0].id);
   ParticleFX.start();
   AmbientAudio.setVolume(Number(volSlider.value) / 100);
+  setPlayerHidden(false);
 
-  // Preload remaining scenes
   SCENES.slice(1).forEach((s) => {
     const img = new Image();
     img.src = s.file;
