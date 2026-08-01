@@ -63,15 +63,22 @@ body {
   max-height: 100dvh;
   display: grid;
   grid-template-rows: 1fr auto;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch; /* stage fills the frame */
+  justify-content: center;
+  margin: 0 auto;
   padding: calc(10px + var(--safe-t)) 10px calc(10px + var(--safe-b));
   gap: 10px;
+  box-sizing: border-box;
 }
 
 /* ===== Stage ===== */
 .stage {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-self: stretch;
   border-radius: 14px;
   overflow: hidden;
   background: #0d0a12;
@@ -90,11 +97,13 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  transform: scale(1.04);
+  transform: scale(1.03);
+  transform-origin: center center;
   transition: opacity 0.7s ease, filter 0.7s ease;
-  animation: kenburns 24s ease-in-out infinite alternate;
+  animation: kenburns 28s ease-in-out infinite alternate;
   will-change: transform;
 }
 
@@ -103,10 +112,10 @@ body {
   filter: blur(4px) brightness(0.7);
 }
 
-/* Scene-specific motion on the art itself */
+/* Scene-specific motion — keep framing centered (scale / subtle symmetric drift) */
 body[data-scene="ocean"] .scene-art,
 body[data-scene="lighthouse"] .scene-art {
-  animation: tide 10s ease-in-out infinite alternate;
+  animation: tide 12s ease-in-out infinite alternate;
 }
 body[data-scene="fireplace"] .scene-art {
   animation: firepulse 3.5s ease-in-out infinite alternate;
@@ -115,7 +124,7 @@ body[data-scene="pets"] .scene-art {
   animation: breath 3.6s ease-in-out infinite;
 }
 body[data-scene="train"] .scene-art {
-  animation: trainpan 14s linear infinite alternate;
+  animation: trainpan 16s ease-in-out infinite alternate;
 }
 body[data-scene="fireworks"] .scene-art {
   animation: nightglow 6s ease-in-out infinite alternate;
@@ -128,36 +137,36 @@ body[data-scene="reef"] .scene-art {
 }
 
 @keyframes kenburns {
-  from { transform: scale(1.03) translate(0, 0); }
-  to   { transform: scale(1.1) translate(-1.4%, -1%); }
+  from { transform: scale(1.02) translate(0, 0); }
+  to   { transform: scale(1.07) translate(0, 0); }
 }
 @keyframes tide {
-  from { transform: scale(1.06) translate(0, 0.6%); }
-  to   { transform: scale(1.1) translate(-1.2%, -0.8%); }
+  from { transform: scale(1.03) translate(0, 0.4%); }
+  to   { transform: scale(1.07) translate(0, -0.4%); }
 }
 @keyframes firepulse {
-  from { transform: scale(1.04); filter: brightness(1) saturate(1); }
-  to   { transform: scale(1.07); filter: brightness(1.08) saturate(1.12); }
+  from { transform: scale(1.03); filter: brightness(1) saturate(1); }
+  to   { transform: scale(1.055); filter: brightness(1.06) saturate(1.1); }
 }
 @keyframes breath {
-  0%, 100% { transform: scale(1.04); }
-  50% { transform: scale(1.055); }
+  0%, 100% { transform: scale(1.03); }
+  50% { transform: scale(1.045); }
 }
 @keyframes trainpan {
-  from { transform: scale(1.08) translate(0, 0); }
-  to   { transform: scale(1.08) translate(-3%, 0); }
+  from { transform: scale(1.06) translate(0.6%, 0); }
+  to   { transform: scale(1.06) translate(-0.6%, 0); }
 }
 @keyframes nightglow {
-  from { transform: scale(1.05); filter: brightness(1); }
-  to   { transform: scale(1.08); filter: brightness(1.06); }
+  from { transform: scale(1.03); filter: brightness(1); }
+  to   { transform: scale(1.06); filter: brightness(1.05); }
 }
 @keyframes aurorapan {
-  from { transform: scale(1.06) translate(0, 0); }
-  to   { transform: scale(1.1) translate(-2%, 1%); }
+  from { transform: scale(1.03) translate(0, 0); }
+  to   { transform: scale(1.07) translate(0, 0.4%); }
 }
 @keyframes undercurrent {
-  from { transform: scale(1.06) translate(0, 0); }
-  to   { transform: scale(1.1) translate(1%, -0.8%); }
+  from { transform: scale(1.03) translate(0, 0); }
+  to   { transform: scale(1.07) translate(0, -0.4%); }
 }
 
 #particles {
@@ -196,6 +205,8 @@ body[data-scene="reef"] .scene-art {
 .player {
   flex-shrink: 0;
   width: min(340px, 100%);
+  max-width: 100%;
+  justify-self: center; /* only the player is centered under the full-width stage */
   transition: opacity 0.22s ease, transform 0.22s ease;
   z-index: 40;
 }
@@ -831,14 +842,23 @@ body:not(.is-playing) .peek-dot {
 /* Fullscreen — art fills screen; player floats & is draggable */
 body.fullscreen .app {
   max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: none;
   padding: 0;
+  margin: 0;
+  gap: 0;
   grid-template-rows: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: stretch;
 }
 
 body.fullscreen .stage {
   border-radius: 0;
   box-shadow: none;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
 }
 
 /* JS sets left/top/transform directly when moved; defaults via CSS */
