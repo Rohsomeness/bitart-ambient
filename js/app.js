@@ -3,15 +3,27 @@
  */
 (function () {
   const SCENES = [
-    { id: "fireplace", name: "Fireplace", file: "assets/scenes/fireplace.jpg", emoji: "🔥" },
-    { id: "rainforest", name: "Rainforest", file: "assets/scenes/rainforest.jpg", emoji: "🌿" },
-    { id: "ocean", name: "Ocean", file: "assets/scenes/ocean.jpg", emoji: "🌊" },
-    { id: "rainy", name: "Rainy Nite", file: "assets/scenes/rainy.jpg", emoji: "🌧️" },
-    { id: "stars", name: "Starfield", file: "assets/scenes/stars.jpg", emoji: "✨" },
-    { id: "sakura", name: "Sakura", file: "assets/scenes/sakura.jpg", emoji: "🌸" },
-    { id: "fireworks", name: "Fireworks", file: "assets/scenes/fireworks.jpg", emoji: "🎆" },
-    { id: "moonforest", name: "Moonforest", file: "assets/scenes/moonforest.jpg", emoji: "🌙" },
-    { id: "pets", name: "Nap Time", file: "assets/scenes/pets.jpg", emoji: "🐾" },
+    { id: "fireplace", name: "Fireplace", file: "assets/scenes/fireplace.jpg" },
+    { id: "rainforest", name: "Rainforest", file: "assets/scenes/rainforest.jpg" },
+    { id: "ocean", name: "Ocean", file: "assets/scenes/ocean.jpg" },
+    { id: "rainy", name: "Rainy Nite", file: "assets/scenes/rainy.jpg" },
+    { id: "stars", name: "Starfield", file: "assets/scenes/stars.jpg" },
+    { id: "sakura", name: "Sakura", file: "assets/scenes/sakura.jpg" },
+    { id: "fireworks", name: "Fireworks", file: "assets/scenes/fireworks.jpg" },
+    { id: "moonforest", name: "Moonforest", file: "assets/scenes/moonforest.jpg" },
+    { id: "pets", name: "Nap Time", file: "assets/scenes/pets.jpg" },
+    { id: "snowcabin", name: "Snow Cabin", file: "assets/scenes/snowcabin.jpg" },
+    { id: "reef", name: "Coral Reef", file: "assets/scenes/reef.jpg" },
+    { id: "aurora", name: "Aurora", file: "assets/scenes/aurora.jpg" },
+    { id: "coffee", name: "Cafe", file: "assets/scenes/coffee.jpg" },
+    { id: "train", name: "Train", file: "assets/scenes/train.jpg" },
+    { id: "onsen", name: "Onsen", file: "assets/scenes/onsen.jpg" },
+    { id: "lighthouse", name: "Lighthouse", file: "assets/scenes/lighthouse.jpg" },
+    { id: "autumn", name: "Autumn", file: "assets/scenes/autumn.jpg" },
+    { id: "desert", name: "Desert Nite", file: "assets/scenes/desert.jpg" },
+    { id: "rooftop", name: "Rooftop", file: "assets/scenes/rooftop.jpg" },
+    { id: "library", name: "Library", file: "assets/scenes/library.jpg" },
+    { id: "meadow", name: "Meadow", file: "assets/scenes/meadow.jpg" },
   ];
 
   let index = 0;
@@ -45,7 +57,7 @@
   const player = $("#player");
   const playerHeader = $("#playerDrag");
   const gate = $("#gate");
-  const sceneRail = document.querySelector(".scene-rail");
+  const sceneRail = document.querySelector(".scene-rail") || $("#sceneRail");
 
   function press(btn) {
     if (!btn) return;
@@ -64,7 +76,7 @@
       btn.setAttribute("aria-label", s.name);
       btn.dataset.index = String(i);
       btn.innerHTML = `
-        <img class="scene-thumb" src="${s.file}" alt="" loading="eager" draggable="false" />
+        <img class="scene-thumb" src="${s.file}" alt="" loading="lazy" draggable="false" />
         <span class="scene-name">${s.name}</span>
       `;
       btn.addEventListener("click", () => {
@@ -74,6 +86,7 @@
       });
       sceneRail.appendChild(btn);
     });
+    requestAnimationFrame(() => scrollActiveIntoView(false));
   }
 
   function updateRail() {
@@ -82,6 +95,25 @@
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+    scrollActiveIntoView(true);
+  }
+
+  function scrollActiveIntoView(smooth) {
+    const btn = sceneRail.querySelector(".scene-btn.active");
+    if (!btn) return;
+    const railRect = sceneRail.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    const delta =
+      btnRect.left - railRect.left - railRect.width / 2 + btnRect.width / 2;
+    sceneRail.scrollBy({
+      left: delta,
+      behavior: smooth ? "smooth" : "auto",
+    });
+  }
+
+  function scrollRail(dir) {
+    const amount = Math.max(120, sceneRail.clientWidth * 0.7) * dir;
+    sceneRail.scrollBy({ left: amount, behavior: "smooth" });
   }
 
   function selectScene(i) {
@@ -89,6 +121,7 @@
     const scene = SCENES[index];
 
     sceneArt.classList.add("switching");
+    sceneArt.dataset.scene = scene.id;
     setTimeout(() => {
       sceneArt.src = scene.file;
       sceneArt.alt = scene.name + " bitart scene";
@@ -96,6 +129,7 @@
     }, 280);
 
     lcdScene.textContent = scene.name.toUpperCase();
+    document.body.dataset.scene = scene.id;
     updateRail();
     ParticleFX.setMode(scene.id);
 
@@ -287,6 +321,35 @@
     selectScene(index + 1);
   });
 
+  const btnScenePrev = $("#btnScenePrev");
+  const btnSceneNext = $("#btnSceneNext");
+  if (btnScenePrev) {
+    btnScenePrev.addEventListener("click", () => {
+      press(btnScenePrev);
+      AmbientAudio.thock("chip");
+      scrollRail(-1);
+    });
+  }
+  if (btnSceneNext) {
+    btnSceneNext.addEventListener("click", () => {
+      press(btnSceneNext);
+      AmbientAudio.thock("chip");
+      scrollRail(1);
+    });
+  }
+
+  // Horizontal wheel / trackpad on scene rail
+  sceneRail.addEventListener(
+    "wheel",
+    (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        sceneRail.scrollLeft += e.deltaY;
+      }
+    },
+    { passive: false }
+  );
+
   let lastVolThock = 0;
   volSlider.addEventListener("input", () => {
     const v = Number(volSlider.value);
@@ -435,6 +498,8 @@
   buildRail();
   sceneArt.src = SCENES[0].file;
   sceneArt.alt = SCENES[0].name + " bitart scene";
+  sceneArt.dataset.scene = SCENES[0].id;
+  document.body.dataset.scene = SCENES[0].id;
   lcdScene.textContent = SCENES[0].name.toUpperCase();
   ParticleFX.setMode(SCENES[0].id);
   ParticleFX.start();

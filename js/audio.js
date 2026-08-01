@@ -1004,6 +1004,167 @@ const AmbientAudio = (() => {
     return nodes;
   }
 
+  function warmBed(color, lpHz, gain) {
+    const n = makeNoise(color);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = lpHz;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    n.out.connect(lp);
+    lp.connect(g);
+    g.connect(master);
+    n.source.start();
+    return [n.source, lp, g];
+  }
+
+  function softPads(freqs, level = 0.012) {
+    const nodes = [];
+    freqs.forEach((f, i) => {
+      const p = padTone(f, i % 2 ? "sine" : "triangle");
+      p.gain.gain.setTargetAtTime(level, ctx.currentTime, 2);
+      p.gain.connect(master);
+      nodes.push(p.osc, p.gain);
+    });
+    return nodes;
+  }
+
+  function buildSnowcabin() {
+    const nodes = [...warmBed("pink", 700, 0.04), ...softPads([65.4, 82.4, 98], 0.014)];
+    // soft wind
+    nodes.push(...warmBed("brown", 300, 0.035));
+    return nodes;
+  }
+
+  function buildReef() {
+    const nodes = [...warmBed("pink", 900, 0.05), ...softPads([73.4, 98, 146.8], 0.012)];
+    // occasional soft bubble blip
+    const bub = { _interval: null };
+    bub._interval = setInterval(() => {
+      if (!playing || ctx.state !== "running") return;
+      if (Math.random() > 0.5) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(180 + Math.random() * 120, t);
+      o.frequency.exponentialRampToValueAtTime(90, t + 0.15);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.02, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g);
+      g.connect(master);
+      o.start(t);
+      o.stop(t + 0.25);
+    }, 600);
+    nodes.push(bub);
+    return nodes;
+  }
+
+  function buildAurora() {
+    return [...warmBed("brown", 250, 0.04), ...softPads([55, 69.3, 82.4, 110], 0.015)];
+  }
+
+  function buildCoffee() {
+    const nodes = [...warmBed("brown", 400, 0.04), ...softPads([82.4, 103.8, 123.5], 0.014)];
+    // light outdoor rain
+    const rain = makeNoise("pink");
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 200;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1000;
+    const g = ctx.createGain();
+    g.gain.value = 0.03;
+    rain.out.connect(hp);
+    hp.connect(lp);
+    lp.connect(g);
+    g.connect(master);
+    rain.source.start();
+    nodes.push(rain.source, hp, lp, g);
+    return nodes;
+  }
+
+  function buildTrain() {
+    const nodes = [...warmBed("brown", 350, 0.05), ...softPads([65.4, 98], 0.012)];
+    // soft rhythmic clack (very muted)
+    const clack = { _interval: null };
+    clack._interval = setInterval(() => {
+      if (!playing || ctx.state !== "running") return;
+      const t = ctx.currentTime;
+      fireNoiseBurst({
+        duration: 0.04,
+        peak: 0.04,
+        attack: 0.002,
+        highpass: 120,
+        lowpass: 500,
+        band: 220,
+        bandQ: 0.8,
+        color: "brown",
+      });
+      setTimeout(() => {
+        if (!playing) return;
+        fireNoiseBurst({
+          duration: 0.035,
+          peak: 0.03,
+          attack: 0.002,
+          highpass: 120,
+          lowpass: 450,
+          band: 200,
+          bandQ: 0.8,
+          color: "brown",
+        });
+      }, 90);
+    }, 480);
+    nodes.push(clack);
+    return nodes;
+  }
+
+  function buildOnsen() {
+    return [...warmBed("pink", 600, 0.05), ...softPads([73.4, 92.5, 110], 0.013)];
+  }
+
+  function buildLighthouse() {
+    const nodes = [...warmBed("brown", 400, 0.055), ...softPads([55, 82.4], 0.014)];
+    // wave swell like ocean
+    const sea = makeNoise("pink");
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 500;
+    const g = ctx.createGain();
+    g.gain.value = 0.06;
+    sea.out.connect(lp);
+    lp.connect(g);
+    g.connect(master);
+    sea.source.start();
+    nodes.push(sea.source, lp, g);
+    return nodes;
+  }
+
+  function buildAutumn() {
+    return [...warmBed("pink", 700, 0.04), ...softPads([87.3, 110, 130.8], 0.013)];
+  }
+
+  function buildDesert() {
+    return [...warmBed("brown", 280, 0.04), ...softPads([49, 73.4, 98], 0.014)];
+  }
+
+  function buildRooftop() {
+    return [...warmBed("brown", 450, 0.035), ...softPads([65.4, 82.4, 123.5], 0.013)];
+  }
+
+  function buildLibrary() {
+    const nodes = [...warmBed("brown", 380, 0.04), ...softPads([82.4, 98, 123.5], 0.014)];
+    // soft rain outside
+    nodes.push(...warmBed("pink", 900, 0.028));
+    return nodes;
+  }
+
+  function buildMeadow() {
+    return [...warmBed("pink", 800, 0.035), ...softPads([110, 138.6, 164.8], 0.011)];
+  }
+
   const builders = {
     fireplace: buildFireplace,
     rainforest: buildRainforest,
@@ -1014,6 +1175,18 @@ const AmbientAudio = (() => {
     fireworks: buildFireworks,
     moonforest: buildMoonforest,
     pets: buildPets,
+    snowcabin: buildSnowcabin,
+    reef: buildReef,
+    aurora: buildAurora,
+    coffee: buildCoffee,
+    train: buildTrain,
+    onsen: buildOnsen,
+    lighthouse: buildLighthouse,
+    autumn: buildAutumn,
+    desert: buildDesert,
+    rooftop: buildRooftop,
+    library: buildLibrary,
+    meadow: buildMeadow,
   };
 
   async function play(sceneId) {

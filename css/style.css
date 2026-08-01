@@ -92,9 +92,10 @@ body {
   object-fit: cover;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  transform: scale(1.02);
+  transform: scale(1.04);
   transition: opacity 0.7s ease, filter 0.7s ease;
-  animation: kenburns 28s ease-in-out infinite alternate;
+  animation: kenburns 24s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 .scene-art.switching {
@@ -102,9 +103,61 @@ body {
   filter: blur(4px) brightness(0.7);
 }
 
+/* Scene-specific motion on the art itself */
+body[data-scene="ocean"] .scene-art,
+body[data-scene="lighthouse"] .scene-art {
+  animation: tide 10s ease-in-out infinite alternate;
+}
+body[data-scene="fireplace"] .scene-art {
+  animation: firepulse 3.5s ease-in-out infinite alternate;
+}
+body[data-scene="pets"] .scene-art {
+  animation: breath 3.6s ease-in-out infinite;
+}
+body[data-scene="train"] .scene-art {
+  animation: trainpan 14s linear infinite alternate;
+}
+body[data-scene="fireworks"] .scene-art {
+  animation: nightglow 6s ease-in-out infinite alternate;
+}
+body[data-scene="aurora"] .scene-art {
+  animation: aurorapan 18s ease-in-out infinite alternate;
+}
+body[data-scene="reef"] .scene-art {
+  animation: undercurrent 12s ease-in-out infinite alternate;
+}
+
 @keyframes kenburns {
-  from { transform: scale(1.02) translate(0, 0); }
-  to   { transform: scale(1.08) translate(-1.2%, -0.8%); }
+  from { transform: scale(1.03) translate(0, 0); }
+  to   { transform: scale(1.1) translate(-1.4%, -1%); }
+}
+@keyframes tide {
+  from { transform: scale(1.06) translate(0, 0.6%); }
+  to   { transform: scale(1.1) translate(-1.2%, -0.8%); }
+}
+@keyframes firepulse {
+  from { transform: scale(1.04); filter: brightness(1) saturate(1); }
+  to   { transform: scale(1.07); filter: brightness(1.08) saturate(1.12); }
+}
+@keyframes breath {
+  0%, 100% { transform: scale(1.04); }
+  50% { transform: scale(1.055); }
+}
+@keyframes trainpan {
+  from { transform: scale(1.08) translate(0, 0); }
+  to   { transform: scale(1.08) translate(-3%, 0); }
+}
+@keyframes nightglow {
+  from { transform: scale(1.05); filter: brightness(1); }
+  to   { transform: scale(1.08); filter: brightness(1.06); }
+}
+@keyframes aurorapan {
+  from { transform: scale(1.06) translate(0, 0); }
+  to   { transform: scale(1.1) translate(-2%, 1%); }
+}
+@keyframes undercurrent {
+  from { transform: scale(1.06) translate(0, 0); }
+  to   { transform: scale(1.1) translate(1%, -0.8%); }
 }
 
 #particles {
@@ -331,12 +384,51 @@ body.player-collapsed .player {
   padding: 0;
 }
 
-/* Scene rail — 3×3 for nine scenes */
-.scene-rail {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* Horizontal scrollable scene picker */
+.scene-scroll {
+  display: flex;
+  align-items: center;
   gap: 4px;
   margin-bottom: 7px;
+  min-width: 0;
+}
+
+.scene-nav {
+  flex-shrink: 0;
+  width: 26px !important;
+  height: 40px !important;
+  font-size: 16px !important;
+  line-height: 1;
+  padding: 0;
+  z-index: 2;
+}
+
+.scene-rail {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 2px 6px;
+  /* hide scrollbar but keep scroll */
+  scrollbar-width: thin;
+  scrollbar-color: var(--shell-light) transparent;
+  touch-action: pan-x;
+}
+
+.scene-rail::-webkit-scrollbar {
+  height: 4px;
+}
+.scene-rail::-webkit-scrollbar-thumb {
+  background: var(--shell-light);
+  border-radius: 4px;
 }
 
 .scene-btn {
@@ -348,14 +440,17 @@ body.player-collapsed .player {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 0;
+  gap: 3px;
+  flex: 0 0 auto;
+  width: 72px;
+  scroll-snap-align: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .scene-thumb {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 5px;
+  width: 72px;
+  height: 46px;
+  border-radius: 6px;
   object-fit: cover;
   image-rendering: pixelated;
   border: 2px solid #1a1520;
@@ -364,6 +459,7 @@ body.player-collapsed .player {
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.15s ease;
   background: #111;
+  display: block;
 }
 
 .scene-btn:active .scene-thumb {
@@ -375,16 +471,20 @@ body.player-collapsed .player {
   border-color: var(--warm);
   box-shadow:
     0 2px 0 #1a1520,
-    0 0 0 1px rgba(255, 211, 106, 0.4),
+    0 0 0 2px rgba(255, 211, 106, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .scene-name {
   font-family: var(--font-pixel);
-  font-size: 0;
-  height: 0;
-  overflow: hidden;
+  font-size: 5px;
+  line-height: 1.2;
   color: var(--muted);
+  text-align: center;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scene-btn.active .scene-name {
@@ -829,15 +929,25 @@ body.fullscreen .btn-hide {
     align-self: center;
   }
 
-  body:not(.fullscreen) .scene-rail { grid-template-columns: repeat(3, 1fr); }
   body:not(.fullscreen) .player-footer { display: none; }
   body:not(.fullscreen) .eq { display: none; }
   body:not(.fullscreen) .brand-sub { display: none; }
+  body:not(.fullscreen) .scene-btn { width: 58px; }
+  body:not(.fullscreen) .scene-thumb { width: 58px; height: 38px; }
+  body:not(.fullscreen) .scene-name { font-size: 0; height: 0; }
+}
+
+@media (max-width: 640px) {
+  .scene-btn { width: 64px; }
+  .scene-thumb { width: 64px; height: 42px; }
+  .scene-nav { width: 24px !important; height: 36px !important; }
+  .player { width: min(340px, 100%); }
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .scene-art { animation: none; }
+  .scene-art,
+  body[data-scene] .scene-art { animation: none !important; }
   .eq.live span { animation: none; }
   .gate-pixel { animation: none; }
   .brand-dot { animation: none; }
