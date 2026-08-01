@@ -140,6 +140,15 @@ body.is-playing[data-scene="aurora"] .scene-art {
 body.is-playing[data-scene="reef"] .scene-art {
   animation: undercurrent 12s ease-in-out infinite alternate;
 }
+body.is-playing[data-scene="neon"] .scene-art {
+  animation: nightglow 7s ease-in-out infinite alternate;
+}
+body.is-playing[data-scene="couple"] .scene-art {
+  animation: breath 3.8s ease-in-out infinite;
+}
+body.is-playing[data-scene="mountain"] .scene-art {
+  animation: aurorapan 20s ease-in-out infinite alternate;
+}
 
 /* Frozen still frame when paused */
 body:not(.is-playing) .scene-art {

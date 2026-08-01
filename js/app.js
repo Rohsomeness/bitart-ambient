@@ -24,6 +24,15 @@
     { id: "rooftop", name: "Rooftop", file: "assets/scenes/rooftop.jpg" },
     { id: "library", name: "Library", file: "assets/scenes/library.jpg" },
     { id: "meadow", name: "Meadow", file: "assets/scenes/meadow.jpg" },
+    { id: "neon", name: "Neon City", file: "assets/scenes/neon.jpg" },
+    { id: "couple", name: "Cuddle", file: "assets/scenes/couple.jpg" },
+    { id: "bamboo", name: "Bamboo", file: "assets/scenes/bamboo.jpg" },
+    { id: "attic", name: "Attic", file: "assets/scenes/attic.jpg" },
+    { id: "mountain", name: "Mt. Lake", file: "assets/scenes/mountain.jpg" },
+    { id: "records", name: "Records", file: "assets/scenes/records.jpg" },
+    { id: "greenhouse", name: "Greenhouse", file: "assets/scenes/greenhouse.jpg" },
+    { id: "booknook", name: "Book Nook", file: "assets/scenes/booknook.jpg" },
+    { id: "lavender", name: "Lavender", file: "assets/scenes/lavender.jpg" },
   ];
 
   let index = 0;

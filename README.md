@@ -4,7 +4,7 @@ Cute retro **pixel-art ambient player** — peaceful screensavers with soft proc
 
 **Live:** https://rohsomeness.github.io/bitart-ambient/
 
-## Scenes (21)
+## Scenes (30)
 
 | Scene | Mood |
 |-------|------|
@@ -29,6 +29,15 @@ Cute retro **pixel-art ambient player** — peaceful screensavers with soft proc
 | Rooftop | City dusk glow |
 | Library | Rainy reading nook |
 | Meadow | Butterflies & breeze |
+| Neon City | Neon urban skyline |
+| Cuddle | Couple cozy on the couch |
+| Bamboo | Misty bamboo grove |
+| Attic | Rainy attic bedroom |
+| Mt. Lake | Mountain lake sunrise |
+| Records | Vinyl shop glow |
+| Greenhouse | Plant haven |
+| Book Nook | Rainy reading corner |
+| Lavender | Lavender field twilight |
 
 ## Features
 

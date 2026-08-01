@@ -1249,6 +1249,80 @@ const AmbientAudio = (() => {
     return [...warmBed("pink", 800, 0.035), ...softPads([110, 138.6, 164.8], 0.011)];
   }
 
+  function buildNeon() {
+    const nodes = [...warmBed("brown", 420, 0.04), ...softPads([55, 82.4, 110], 0.012)];
+    // soft distant city hum
+    const hum = padTone(60, "sawtooth");
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 180;
+    hum.gain.gain.setTargetAtTime(0.008, ctx.currentTime, 2);
+    hum.osc.connect(lp);
+    lp.connect(hum.gain);
+    hum.gain.connect(master);
+    nodes.push(hum.osc, lp, hum.gain);
+    return nodes;
+  }
+
+  function buildCouple() {
+    // cozy room + soft breaths like pets
+    const nodes = [...warmBed("brown", 320, 0.04), ...softPads([65.4, 82.4, 98], 0.014)];
+    const breath = makeNoise("pink");
+    const bLp = ctx.createBiquadFilter();
+    bLp.type = "lowpass";
+    bLp.frequency.value = 380;
+    const bG = ctx.createGain();
+    bG.gain.value = 0.018;
+    breath.out.connect(bLp);
+    bLp.connect(bG);
+    bG.connect(master);
+    breath.source.start();
+    nodes.push(breath.source, bLp, bG);
+    const breathe = { _raf: null };
+    const start = performance.now();
+    function tick() {
+      if (!playing) return;
+      const sec = (performance.now() - start) / 1000;
+      bG.gain.setTargetAtTime(0.012 + 0.014 * (0.5 + 0.5 * Math.sin(sec * 1.35)), ctx.currentTime, 0.12);
+      breathe._raf = requestAnimationFrame(tick);
+    }
+    breathe._raf = requestAnimationFrame(tick);
+    nodes.push(breathe);
+    return nodes;
+  }
+
+  function buildBamboo() {
+    return [...warmBed("pink", 650, 0.04), ...softPads([87.3, 110, 130.8], 0.012)];
+  }
+
+  function buildAttic() {
+    const nodes = [...warmBed("brown", 400, 0.04), ...softPads([73.4, 98, 123.5], 0.013)];
+    nodes.push(...warmBed("pink", 900, 0.025)); // soft rain outside
+    return nodes;
+  }
+
+  function buildMountain() {
+    return [...warmBed("brown", 300, 0.045), ...softPads([55, 69.3, 82.4, 110], 0.014)];
+  }
+
+  function buildRecords() {
+    return [...warmBed("brown", 380, 0.04), ...softPads([65.4, 82.4, 103.8], 0.013)];
+  }
+
+  function buildGreenhouse() {
+    return [...warmBed("pink", 700, 0.04), ...softPads([98, 123.5, 146.8], 0.012)];
+  }
+
+  function buildBooknook() {
+    const nodes = [...warmBed("brown", 360, 0.04), ...softPads([82.4, 98, 123.5], 0.014)];
+    nodes.push(...warmBed("pink", 950, 0.028));
+    return nodes;
+  }
+
+  function buildLavender() {
+    return [...warmBed("pink", 600, 0.035), ...softPads([87.3, 110, 138.6], 0.012)];
+  }
+
   const builders = {
     fireplace: buildFireplace,
     rainforest: buildRainforest,
@@ -1271,6 +1345,15 @@ const AmbientAudio = (() => {
     rooftop: buildRooftop,
     library: buildLibrary,
     meadow: buildMeadow,
+    neon: buildNeon,
+    couple: buildCouple,
+    bamboo: buildBamboo,
+    attic: buildAttic,
+    mountain: buildMountain,
+    records: buildRecords,
+    greenhouse: buildGreenhouse,
+    booknook: buildBooknook,
+    lavender: buildLavender,
   };
 
   async function play(sceneId) {

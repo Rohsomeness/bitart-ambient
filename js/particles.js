@@ -77,6 +77,15 @@ const ParticleFX = (() => {
       rooftop: m ? 16 : 28,
       library: m ? 18 : 30,
       meadow: m ? 28 : 45,
+      neon: m ? 35 : 55,
+      couple: m ? 14 : 22,
+      bamboo: m ? 25 : 40,
+      attic: m ? 40 : 70,
+      mountain: m ? 20 : 35,
+      records: m ? 18 : 30,
+      greenhouse: m ? 22 : 36,
+      booknook: m ? 40 : 70,
+      lavender: m ? 24 : 40,
     };
     return map[id] || 30;
   }
@@ -402,6 +411,87 @@ const ParticleFX = (() => {
           size: 3 + Math.random() * 4,
           kind: "butterfly",
           hue: Math.random() * 360,
+        };
+      case "neon":
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h * 0.7,
+          vx: (Math.random() - 0.5) * 0.15,
+          vy: 0,
+          life: 1,
+          age: Math.random() * Math.PI * 2,
+          size: 1.5 + Math.random() * 3,
+          kind: Math.random() > 0.55 ? "neon" : "streak",
+          hue: [300, 190, 320, 170][Math.floor(Math.random() * 4)],
+        };
+      case "couple":
+        return {
+          x: w * (0.3 + Math.random() * 0.4),
+          y: h * (0.35 + Math.random() * 0.35),
+          vx: (Math.random() - 0.5) * 0.1,
+          vy: -0.18 - Math.random() * 0.2,
+          life: 0.7 + Math.random() * 0.5,
+          age: Math.random() * Math.PI * 2,
+          size: 2 + Math.random() * 3,
+          kind: "zz",
+        };
+      case "bamboo":
+        return {
+          x: Math.random() * w,
+          y: randomY ? Math.random() * h : h + 4,
+          vx: 0.1 + Math.random() * 0.2,
+          vy: -0.3 - Math.random() * 0.4,
+          life: 1,
+          age: 0,
+          size: 2 + Math.random() * 4,
+          kind: Math.random() > 0.4 ? "mist" : "leaf",
+        };
+      case "attic":
+      case "booknook":
+        return {
+          x: Math.random() * w,
+          y: randomY ? Math.random() * h : -8,
+          vx: -0.25 - Math.random() * 0.35,
+          vy: 1.4 + Math.random() * 2.2,
+          life: 1,
+          age: 0,
+          size: 8 + Math.random() * 12,
+          kind: "rain",
+        };
+      case "mountain":
+        return {
+          x: Math.random() * w,
+          y: h * (0.35 + Math.random() * 0.35),
+          vx: 0.15 + Math.random() * 0.25,
+          vy: (Math.random() - 0.5) * 0.08,
+          life: 1,
+          age: Math.random() * Math.PI * 2,
+          size: 18 + Math.random() * 30,
+          kind: "mist",
+        };
+      case "records":
+      case "greenhouse":
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.12,
+          vy: -0.08 - Math.random() * 0.15,
+          life: 0.8 + Math.random() * 0.5,
+          age: Math.random() * Math.PI * 2,
+          size: 1.5 + Math.random() * 2,
+          kind: "mote",
+        };
+      case "lavender":
+        return {
+          x: Math.random() * w,
+          y: h * (0.35 + Math.random() * 0.45),
+          vx: 0.2 + Math.random() * 0.4,
+          vy: -0.1 - Math.random() * 0.2,
+          life: 1,
+          age: Math.random() * Math.PI * 2,
+          size: 1.5 + Math.random() * 2.5,
+          kind: "pollen",
+          hue: 270 + Math.random() * 40,
         };
       default:
         return spawn("stars", randomY);
@@ -897,6 +987,102 @@ const ParticleFX = (() => {
         ctx.beginPath();
         ctx.ellipse(p.x - p.size * 0.4, p.y, p.size * 0.5, p.size * 0.3, -0.4, 0, Math.PI * 2);
         ctx.ellipse(p.x + p.size * 0.4, p.y, p.size * 0.5, p.size * 0.3, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+
+      if (mode === "neon") {
+        p.age += dt;
+        if (p.kind === "streak") {
+          p.x += 1.5 + Math.random();
+          if (p.x > w + 20) p.x = -20;
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = `hsl(${p.hue}, 100%, 60%)`;
+          ctx.fillRect(p.x, h * 0.78 + Math.sin(p.age) * 4, p.size * 4, 2);
+        } else {
+          ctx.globalAlpha = 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(p.age * 3));
+          ctx.fillStyle = `hsl(${p.hue}, 100%, 65%)`;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+        }
+        continue;
+      }
+
+      if (mode === "couple") {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.0035;
+        const a = Math.max(0, p.life);
+        const breath = 0.5 + 0.5 * Math.sin(sec * 1.35);
+        ctx.globalAlpha = a * (0.5 + breath * 0.5);
+        ctx.fillStyle = `hsla(340, 45%, 80%, ${a})`;
+        ctx.font = `${11 + p.size}px VT323, monospace`;
+        ctx.fillText("♥", p.x, p.y);
+        if (p.life <= 0 || p.y < h * 0.18) particles[i] = spawn("couple");
+        continue;
+      }
+
+      if (mode === "bamboo") {
+        p.x += p.vx + Math.sin(p.age * 2) * 0.2;
+        p.y += p.vy;
+        if (p.kind === "leaf") {
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = "#6dbf6a";
+          ctx.fillRect(p.x, p.y, p.size * 1.5, p.size * 0.5);
+        } else {
+          ctx.globalAlpha = 0.1;
+          ctx.fillStyle = "#e8fff0";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (p.y < -20) particles[i] = spawn("bamboo");
+        continue;
+      }
+
+      if (mode === "attic" || mode === "booknook") {
+        p.x += p.vx;
+        p.y += p.vy;
+        ctx.globalAlpha = 0.3;
+        ctx.strokeStyle = "rgba(170, 200, 255, 0.7)";
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.vx, p.y + p.size * 0.5);
+        ctx.stroke();
+        if (p.y > h) particles[i] = spawn(mode);
+        continue;
+      }
+
+      if (mode === "mountain") {
+        p.x += p.vx;
+        if (p.x > w + 40) p.x = -40;
+        ctx.globalAlpha = 0.07 + 0.05 * Math.sin(p.age + sec);
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.size, p.size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+
+      if (mode === "records" || mode === "greenhouse") {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.003;
+        const a = Math.max(0, p.life);
+        ctx.globalAlpha = a * 0.45;
+        ctx.fillStyle = mode === "greenhouse" ? "#d8ffd0" : "#ffe8b0";
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        if (p.life <= 0 || p.y < 0) particles[i] = spawn(mode);
+        continue;
+      }
+
+      if (mode === "lavender") {
+        p.x += p.vx + Math.sin(p.age * 2) * 0.2;
+        p.y += p.vy;
+        if (p.x > w + 10) p.x = -10;
+        ctx.globalAlpha = 0.4 + 0.4 * Math.sin(p.age * 3);
+        ctx.fillStyle = `hsl(${p.hue}, 60%, 70%)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2);
         ctx.fill();
         continue;
       }
