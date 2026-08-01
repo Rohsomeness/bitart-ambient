@@ -478,6 +478,8 @@ body.player-collapsed .player {
   width: 72px;
   scroll-snap-align: center;
   -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  color: inherit;
 }
 
 .scene-thumb {
@@ -630,6 +632,8 @@ body.player-collapsed .player {
   gap: 5px;
   min-width: 0;
   -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  color: inherit;
 }
 
 .scene-modal-item img {

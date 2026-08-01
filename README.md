@@ -4,6 +4,18 @@ Cute retro **pixel-art ambient player** — peaceful screensavers with soft proc
 
 **Live:** https://rohsomeness.github.io/bitart-ambient/
 
+## Deep links
+
+Every scene has its own URL via `?scene=<id>`:
+
+```
+https://rohsomeness.github.io/bitart-ambient/?scene=neon
+https://rohsomeness.github.io/bitart-ambient/?scene=couple
+https://rohsomeness.github.io/bitart-ambient/?scene=fireplace
+```
+
+Also works with hash form: `#neon`. Changing scenes updates the address bar so you can copy/share the current one. Scene thumbs and the all-scenes grid are real links (open in new tab works).
+
 ## Scenes (30)
 
 | Scene | Mood |

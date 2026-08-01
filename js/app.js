@@ -80,11 +80,55 @@
     setTimeout(() => btn.classList.remove("pressed"), 120);
   }
 
+  /** Shareable URL for a scene (works on GitHub Pages paths). */
+  function sceneHref(id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("scene", id);
+    url.hash = "";
+    return url.pathname + url.search;
+  }
+
+  function sceneAbsoluteUrl(id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("scene", id);
+    url.hash = "";
+    return url.toString();
+  }
+
+  function sceneIndexFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    let id = (params.get("scene") || params.get("s") || "").toLowerCase().trim();
+    if (!id && window.location.hash) {
+      id = window.location.hash.replace(/^#/, "").toLowerCase().trim();
+    }
+    if (!id) return 0;
+    // allow name-ish slugs: "neon-city" -> try id match first, then name
+    const byId = SCENES.findIndex((s) => s.id === id);
+    if (byId >= 0) return byId;
+    const slug = id.replace(/[^a-z0-9]+/g, "");
+    const bySlug = SCENES.findIndex(
+      (s) => s.id === slug || s.name.toLowerCase().replace(/[^a-z0-9]+/g, "") === slug
+    );
+    return bySlug >= 0 ? bySlug : 0;
+  }
+
+  function syncUrl(sceneId, { push = false } = {}) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("scene", sceneId);
+    url.hash = "";
+    const path = url.pathname + url.search;
+    const state = { scene: sceneId };
+    if (push) history.pushState(state, "", path);
+    else history.replaceState(state, "", path);
+    const scene = SCENES.find((s) => s.id === sceneId);
+    document.title = scene ? `${scene.name} · Bitart Ambient` : "Bitart Ambient";
+  }
+
   function buildRail() {
     sceneRail.innerHTML = "";
     SCENES.forEach((s, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
+      const btn = document.createElement("a");
+      btn.href = sceneHref(s.id);
       btn.className = "scene-btn" + (i === index ? " active" : "");
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", i === index ? "true" : "false");
@@ -94,10 +138,13 @@
         <img class="scene-thumb" src="${s.file}" alt="" loading="lazy" draggable="false" />
         <span class="scene-name">${s.name}</span>
       `;
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        // Keep SPA switch; middle-click / open-in-new-tab still use real href
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
         press(btn);
         AmbientAudio.thock("scene");
-        selectScene(i);
+        selectScene(i, { push: true });
       });
       sceneRail.appendChild(btn);
     });
@@ -109,8 +156,8 @@
     sceneModalGrid.innerHTML = "";
     if (sceneModalCount) sceneModalCount.textContent = String(SCENES.length);
     SCENES.forEach((s, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
+      const btn = document.createElement("a");
+      btn.href = sceneHref(s.id);
       btn.className = "scene-modal-item" + (i === index ? " active" : "");
       btn.setAttribute("role", "option");
       btn.setAttribute("aria-selected", i === index ? "true" : "false");
@@ -120,9 +167,11 @@
         <img src="${s.file}" alt="" loading="lazy" draggable="false" />
         <span>${s.name}</span>
       `;
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
         AmbientAudio.thock("scene");
-        selectScene(i);
+        selectScene(i, { push: true });
         setSceneModalOpen(false);
       });
       sceneModalGrid.appendChild(btn);
@@ -181,22 +230,30 @@
     sceneRail.scrollBy({ left: amount, behavior: "smooth" });
   }
 
-  function selectScene(i) {
+  function selectScene(i, { push = false, instant = false, updateUrl = true } = {}) {
     index = (i + SCENES.length) % SCENES.length;
     const scene = SCENES[index];
 
-    sceneArt.classList.add("switching");
-    sceneArt.dataset.scene = scene.id;
-    setTimeout(() => {
+    if (instant) {
+      sceneArt.classList.remove("switching");
       sceneArt.src = scene.file;
       sceneArt.alt = scene.name + " bitart scene";
-      sceneArt.classList.remove("switching");
-    }, 280);
+    } else {
+      sceneArt.classList.add("switching");
+      setTimeout(() => {
+        sceneArt.src = scene.file;
+        sceneArt.alt = scene.name + " bitart scene";
+        sceneArt.classList.remove("switching");
+      }, 280);
+    }
 
+    sceneArt.dataset.scene = scene.id;
     lcdScene.textContent = scene.name.toUpperCase();
     document.body.dataset.scene = scene.id;
     updateRail();
     ParticleFX.setMode(scene.id);
+
+    if (updateUrl) syncUrl(scene.id, { push });
 
     if (playing) {
       AmbientAudio.play(scene.id);
@@ -372,13 +429,13 @@
   $("#btnPrev").addEventListener("click", () => {
     press($("#btnPrev"));
     AmbientAudio.thock("key");
-    selectScene(index - 1);
+    selectScene(index - 1, { push: true });
   });
 
   $("#btnNext").addEventListener("click", () => {
     press($("#btnNext"));
     AmbientAudio.thock("key");
-    selectScene(index + 1);
+    selectScene(index + 1, { push: true });
   });
 
   const btnScenePrev = $("#btnScenePrev");
@@ -571,31 +628,35 @@
     touchX = null;
     if (Math.abs(dx) < 50) return;
     AmbientAudio.thock("key");
-    selectScene(index + (dx < 0 ? 1 : -1));
+    selectScene(index + (dx < 0 ? 1 : -1), { push: true });
   }, { passive: true });
+
+  // Browser back / forward between scene links
+  window.addEventListener("popstate", (e) => {
+    const id = (e.state && e.state.scene) || null;
+    let i = id ? SCENES.findIndex((s) => s.id === id) : sceneIndexFromUrl();
+    if (i < 0) i = sceneIndexFromUrl();
+    selectScene(i, { push: false, updateUrl: false, instant: true });
+  });
 
   document.addEventListener("visibilitychange", async () => {
     if (document.hidden) return;
     if (playing) await AmbientAudio.resume();
   });
 
-  // Boot — scene visible but paused until user hits play
+  // Boot — open linked scene if present; paused until play
   ParticleFX.init($("#particles"));
   ParticleFX.setEnabled(true);
+  const startIndex = sceneIndexFromUrl();
+  index = startIndex;
   buildRail();
   buildModalGrid();
-  sceneArt.src = SCENES[0].file;
-  sceneArt.alt = SCENES[0].name + " bitart scene";
-  sceneArt.dataset.scene = SCENES[0].id;
-  document.body.dataset.scene = SCENES[0].id;
-  lcdScene.textContent = SCENES[0].name.toUpperCase();
-  ParticleFX.setMode(SCENES[0].id);
+  selectScene(startIndex, { push: false, instant: true, updateUrl: true });
   AmbientAudio.setVolume(Number(volSlider.value) / 100);
   setPlayerHidden(false);
-  // Explicit paused state: no particles, no scene motion, no audio
   setPlaying(false);
 
-  SCENES.slice(1).forEach((s) => {
+  SCENES.forEach((s) => {
     const img = new Image();
     img.src = s.file;
   });
