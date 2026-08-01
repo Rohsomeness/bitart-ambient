@@ -502,6 +502,167 @@ body.player-collapsed .player {
   color: var(--warm);
 }
 
+.scene-expand {
+  font-size: 12px !important;
+  letter-spacing: 0;
+}
+
+/* ===== All-scenes modal ===== */
+.scene-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: calc(12px + var(--safe-t)) 12px calc(12px + var(--safe-b));
+  box-sizing: border-box;
+}
+
+.scene-modal[hidden] {
+  display: none !important;
+}
+
+.scene-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 8, 18, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.scene-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 100%);
+  max-height: min(84dvh, 820px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(165deg, var(--shell-light) 0%, var(--shell) 40%, var(--shell-dark) 100%);
+  border: 2px solid #4a4060;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 0 #1a1520,
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  animation: modalIn 0.22s ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.scene-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 10px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.scene-modal-header h2 {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--warm);
+  letter-spacing: 1px;
+  margin: 0 0 4px;
+}
+
+.scene-modal-sub {
+  font-family: var(--font-lcd);
+  font-size: 16px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.scene-modal-close {
+  width: 36px !important;
+  height: 36px !important;
+  flex-shrink: 0;
+  font-size: 14px !important;
+}
+
+.scene-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.scene-modal-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.scene-modal-item img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border-radius: 8px;
+  border: 3px solid #1a1520;
+  box-shadow: 0 3px 0 #1a1520;
+  background: #111;
+  display: block;
+  transition: border-color 0.12s ease, transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.scene-modal-item:active img {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a1520;
+}
+
+.scene-modal-item.active img {
+  border-color: var(--warm);
+  box-shadow:
+    0 3px 0 #1a1520,
+    0 0 0 2px rgba(255, 211, 106, 0.4);
+}
+
+.scene-modal-item span {
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scene-modal-item.active span {
+  color: var(--warm);
+}
+
+@media (max-width: 520px) {
+  .scene-modal-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+  .scene-modal-header h2 { font-size: 10px; }
+  .scene-modal-item span { font-size: 5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-modal-card { animation: none; }
+}
+
 /* Thocky controls */
 .controls {
   display: flex;

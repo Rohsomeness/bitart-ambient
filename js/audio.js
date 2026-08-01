@@ -579,34 +579,118 @@ const AmbientAudio = (() => {
     // night air
     const n = makeNoise("brown");
     const g = ctx.createGain();
-    g.gain.value = 0.045;
+    g.gain.value = 0.04;
     n.out.connect(g);
     g.connect(master);
     n.source.start();
     nodes.push(n.source, g);
 
-    // campfire crackle (warm mid, not bright)
-    const crackle = makeNoise("pink");
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 480;
-    bp.Q.value = 0.6;
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 1200;
-    const cg = ctx.createGain();
-    cg.gain.value = 0.06;
-    crackle.out.connect(bp);
-    bp.connect(lp);
-    lp.connect(cg);
-    cg.connect(master);
-    crackle.source.start();
-    nodes.push(crackle.source, bp, lp, cg);
+    // campfire low roar (breathing)
+    const roar = makeNoise("brown");
+    const roarLp = ctx.createBiquadFilter();
+    roarLp.type = "lowpass";
+    roarLp.frequency.value = 200;
+    const roarG = ctx.createGain();
+    roarG.gain.value = 0.055;
+    roar.out.connect(roarLp);
+    roarLp.connect(roarG);
+    roarG.connect(master);
+    roar.source.start();
+    nodes.push(roar.source, roarLp, roarG);
+
+    const swell = { _raf: null };
+    const swellStart = performance.now();
+    function swellTick() {
+      if (!playing) return;
+      const sec = (performance.now() - swellStart) / 1000;
+      const wave =
+        0.05 +
+        0.016 * Math.sin(sec * 0.5) +
+        0.01 * Math.sin(sec * 1.1 + 0.8);
+      roarG.gain.setTargetAtTime(Math.max(0.02, wave), ctx.currentTime, 0.1);
+      swell._raf = requestAnimationFrame(swellTick);
+    }
+    swell._raf = requestAnimationFrame(swellTick);
+    nodes.push(swell);
+
+    // soft combustion bed
+    const bed = makeNoise("pink");
+    const bedLp = ctx.createBiquadFilter();
+    bedLp.type = "lowpass";
+    bedLp.frequency.value = 700;
+    const bedG = ctx.createGain();
+    bedG.gain.value = 0.03;
+    bed.out.connect(bedLp);
+    bedLp.connect(bedG);
+    bedG.connect(master);
+    bed.source.start();
+    nodes.push(bed.source, bedLp, bedG);
+
+    // discrete crackles & pops (campfire character)
+    const crackler = { _timeout: null };
+    function armCrackle() {
+      if (!playing) return;
+      const roll = Math.random();
+      if (roll < 0.6) {
+        fireNoiseBurst({
+          duration: 0.025 + Math.random() * 0.03,
+          peak: 0.08 + Math.random() * 0.08,
+          attack: 0.0015,
+          highpass: 350 + Math.random() * 350,
+          lowpass: 1400 + Math.random() * 600,
+          band: 600 + Math.random() * 400,
+          bandQ: 0.9,
+          color: "pink",
+        });
+      } else if (roll < 0.9) {
+        fireNoiseBurst({
+          duration: 0.04 + Math.random() * 0.05,
+          peak: 0.1 + Math.random() * 0.1,
+          attack: 0.002,
+          highpass: 220,
+          lowpass: 1200,
+          band: 480 + Math.random() * 350,
+          bandQ: 0.8,
+          color: "pink",
+        });
+      } else {
+        // deeper log pop
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        const base = 50 + Math.random() * 45;
+        o.frequency.setValueAtTime(base * 1.4, t);
+        o.frequency.exponentialRampToValueAtTime(base * 0.5, t + 0.1);
+        const og = ctx.createGain();
+        og.gain.setValueAtTime(0.0001, t);
+        og.gain.exponentialRampToValueAtTime(0.07, t + 0.004);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(og);
+        og.connect(master);
+        o.start(t);
+        o.stop(t + 0.2);
+        fireNoiseBurst({
+          duration: 0.03,
+          peak: 0.08,
+          attack: 0.0015,
+          highpass: 280,
+          lowpass: 1400,
+          band: 650,
+          bandQ: 1.0,
+          color: "pink",
+        });
+      }
+      crackler._timeout = setTimeout(armCrackle, 120 + Math.random() * 380);
+    }
+    crackler._timeout = setTimeout(armCrackle, 300);
+    nodes.push({
+      stop() { clearTimeout(crackler._timeout); crackler._timeout = null; },
+    });
 
     // ethereal low pad
     [73.4, 98, 146.8].forEach((f, i) => {
       const p = padTone(f, i === 1 ? "sine" : "triangle");
-      p.gain.gain.setTargetAtTime(0.018, ctx.currentTime, 3);
+      p.gain.gain.setTargetAtTime(0.016, ctx.currentTime, 3);
       p.gain.connect(master);
       nodes.push(p.osc, p.gain);
     });

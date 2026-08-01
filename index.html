@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=8" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%232a2438'/%3E%3Crect x='4' y='8' width='8' height='5' fill='%23e8a05c'/%3E%3Crect x='6' y='5' width='4' height='4' fill='%23ffd36a'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -58,6 +58,7 @@
             <!-- filled by JS -->
           </div>
           <button type="button" class="btn btn-chip scene-nav" id="btnSceneNext" aria-label="Scroll scenes right">›</button>
+          <button type="button" class="btn btn-chip scene-nav scene-expand" id="btnSceneGrid" aria-label="Show all scenes" title="All scenes">▦</button>
         </div>
 
         <!-- Transport -->
@@ -87,8 +88,8 @@
         </div>
 
         <footer class="player-footer">
-          <span class="hint">H hide · drag header in fullscreen</span>
-          <span class="hint-mobile">H hide · swipe scenes</span>
+          <span class="hint">H hide · G all scenes · drag in fullscreen</span>
+          <span class="hint-mobile">H hide · ▦ all scenes</span>
         </footer>
       </div>
     </div>
@@ -100,6 +101,23 @@
     <span class="peek-label">BITART</span>
     <span class="peek-chevron">▴</span>
   </button>
+
+  <!-- All-scenes library popup -->
+  <div class="scene-modal" id="sceneModal" hidden aria-hidden="true">
+    <div class="scene-modal-backdrop" id="sceneModalBackdrop"></div>
+    <div class="scene-modal-card" role="dialog" aria-modal="true" aria-labelledby="sceneModalTitle">
+      <header class="scene-modal-header">
+        <div>
+          <h2 id="sceneModalTitle">All Scenes</h2>
+          <p class="scene-modal-sub">tap a vibe · <span id="sceneModalCount">0</span> total</p>
+        </div>
+        <button type="button" class="btn btn-chip scene-modal-close" id="btnSceneModalClose" aria-label="Close">✕</button>
+      </header>
+      <div class="scene-modal-grid" id="sceneModalGrid" role="listbox" aria-label="Scene library">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </div>
 
   <!-- First-run gate (audio needs gesture) -->
   <div class="gate" id="gate">
@@ -113,8 +131,8 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=8"></script>
-  <script src="js/particles.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/audio.js?v=9"></script>
+  <script src="js/particles.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

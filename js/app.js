@@ -58,6 +58,12 @@
   const playerHeader = $("#playerDrag");
   const gate = $("#gate");
   const sceneRail = document.querySelector(".scene-rail") || $("#sceneRail");
+  const sceneModal = $("#sceneModal");
+  const sceneModalGrid = $("#sceneModalGrid");
+  const sceneModalCount = $("#sceneModalCount");
+  const btnSceneGrid = $("#btnSceneGrid");
+  const btnSceneModalClose = $("#btnSceneModalClose");
+  const sceneModalBackdrop = $("#sceneModalBackdrop");
 
   function press(btn) {
     if (!btn) return;
@@ -89,12 +95,62 @@
     requestAnimationFrame(() => scrollActiveIntoView(false));
   }
 
+  function buildModalGrid() {
+    if (!sceneModalGrid) return;
+    sceneModalGrid.innerHTML = "";
+    if (sceneModalCount) sceneModalCount.textContent = String(SCENES.length);
+    SCENES.forEach((s, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "scene-modal-item" + (i === index ? " active" : "");
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", i === index ? "true" : "false");
+      btn.setAttribute("aria-label", s.name);
+      btn.dataset.index = String(i);
+      btn.innerHTML = `
+        <img src="${s.file}" alt="" loading="lazy" draggable="false" />
+        <span>${s.name}</span>
+      `;
+      btn.addEventListener("click", () => {
+        AmbientAudio.thock("scene");
+        selectScene(i);
+        setSceneModalOpen(false);
+      });
+      sceneModalGrid.appendChild(btn);
+    });
+  }
+
+  function updateModalGrid() {
+    if (!sceneModalGrid) return;
+    sceneModalGrid.querySelectorAll(".scene-modal-item").forEach((btn, i) => {
+      const on = i === index;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  function setSceneModalOpen(open) {
+    if (!sceneModal) return;
+    if (open) {
+      updateModalGrid();
+      sceneModal.hidden = false;
+      sceneModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("scene-modal-open");
+      if (btnSceneModalClose) btnSceneModalClose.focus({ preventScroll: true });
+    } else {
+      sceneModal.hidden = true;
+      sceneModal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("scene-modal-open");
+    }
+  }
+
   function updateRail() {
     sceneRail.querySelectorAll(".scene-btn").forEach((btn, i) => {
       const on = i === index;
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+    updateModalGrid();
     scrollActiveIntoView(true);
   }
 
@@ -338,6 +394,26 @@
     });
   }
 
+  if (btnSceneGrid) {
+    btnSceneGrid.addEventListener("click", () => {
+      press(btnSceneGrid);
+      AmbientAudio.thock("chip");
+      setSceneModalOpen(true);
+    });
+  }
+  if (btnSceneModalClose) {
+    btnSceneModalClose.addEventListener("click", () => {
+      AmbientAudio.thock("chip");
+      setSceneModalOpen(false);
+    });
+  }
+  if (sceneModalBackdrop) {
+    sceneModalBackdrop.addEventListener("click", () => {
+      AmbientAudio.thock("chip");
+      setSceneModalOpen(false);
+    });
+  }
+
   // Horizontal wheel / trackpad on scene rail
   sceneRail.addEventListener(
     "wheel",
@@ -445,6 +521,15 @@
       }
       return;
     }
+    // Scene library open
+    if (sceneModal && !sceneModal.hidden) {
+      if (e.code === "Escape" || e.code === "KeyG") {
+        e.preventDefault();
+        AmbientAudio.thock("chip");
+        setSceneModalOpen(false);
+      }
+      return;
+    }
     switch (e.code) {
       case "Space":
         e.preventDefault();
@@ -468,6 +553,11 @@
         e.preventDefault();
         AmbientAudio.thock("chip");
         setPlayerHidden(!playerHidden);
+        break;
+      case "KeyG":
+        e.preventDefault();
+        AmbientAudio.thock("chip");
+        setSceneModalOpen(true);
         break;
     }
   });
@@ -496,6 +586,7 @@
   ParticleFX.init($("#particles"));
   ParticleFX.setEnabled(true);
   buildRail();
+  buildModalGrid();
   sceneArt.src = SCENES[0].file;
   sceneArt.alt = SCENES[0].name + " bitart scene";
   sceneArt.dataset.scene = SCENES[0].id;

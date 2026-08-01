@@ -48,7 +48,8 @@ const ParticleFX = (() => {
 
   function setMode(id) {
     mode = id;
-    burstTimer = 0;
+    // desert tumbleweeds: wait a beat; fireworks: soon
+    burstTimer = id === "desert" ? 1.2 + Math.random() * 2 : 0;
     seed(id);
   }
 
@@ -72,7 +73,7 @@ const ParticleFX = (() => {
       onsen: m ? 30 : 48,
       lighthouse: m ? 28 : 45,
       autumn: m ? 40 : 65,
-      desert: m ? 25 : 40,
+      desert: m ? 30 : 48,
       rooftop: m ? 16 : 28,
       library: m ? 18 : 30,
       meadow: m ? 28 : 45,
@@ -340,7 +341,23 @@ const ParticleFX = (() => {
           hue: 15 + Math.random() * 40,
           kind: "leaf",
         };
-      case "desert":
+      case "desert": {
+        // mostly stars; tumbleweeds spawned on timer too
+        if (Math.random() > 0.82) {
+          return {
+            x: -30 - Math.random() * 40,
+            y: h * (0.62 + Math.random() * 0.22),
+            vx: 1.2 + Math.random() * 1.8,
+            vy: 0,
+            life: 1,
+            age: Math.random() * Math.PI * 2,
+            size: 10 + Math.random() * 14,
+            rot: Math.random() * Math.PI * 2,
+            spin: 0.08 + Math.random() * 0.12,
+            kind: "tumbleweed",
+            bounce: Math.random() * Math.PI * 2,
+          };
+        }
         return {
           x: Math.random() * w,
           y: Math.random() * h * 0.55,
@@ -351,6 +368,7 @@ const ParticleFX = (() => {
           size: 1 + Math.random() * 2,
           kind: "twinkle",
         };
+      }
       case "rooftop":
         return {
           x: Math.random() * w,
@@ -510,6 +528,43 @@ const ParticleFX = (() => {
         spawnRocket();
         if (Math.random() < 0.45) spawnRocket();
         burstTimer = 0.7 + Math.random() * 1.4;
+      }
+    }
+
+    // Desert: occasional tumbleweed roll-through
+    if (mode === "desert") {
+      burstTimer -= dt;
+      if (burstTimer <= 0) {
+        particles.push({
+          x: -40 - Math.random() * 30,
+          y: h * (0.6 + Math.random() * 0.25),
+          vx: 1.4 + Math.random() * 2.2,
+          vy: 0,
+          life: 1,
+          age: 0,
+          size: 12 + Math.random() * 16,
+          rot: Math.random() * Math.PI * 2,
+          spin: 0.1 + Math.random() * 0.14,
+          kind: "tumbleweed",
+          bounce: Math.random() * Math.PI * 2,
+        });
+        // sometimes a second smaller one
+        if (Math.random() < 0.35) {
+          particles.push({
+            x: -60 - Math.random() * 40,
+            y: h * (0.65 + Math.random() * 0.18),
+            vx: 1.0 + Math.random() * 1.4,
+            vy: 0,
+            life: 1,
+            age: 0,
+            size: 8 + Math.random() * 10,
+            rot: Math.random() * Math.PI * 2,
+            spin: 0.12 + Math.random() * 0.1,
+            kind: "tumbleweed",
+            bounce: Math.random() * Math.PI * 2,
+          });
+        }
+        burstTimer = 2.8 + Math.random() * 5.5;
       }
     }
 
@@ -777,6 +832,45 @@ const ParticleFX = (() => {
       }
 
       if (mode === "desert") {
+        if (p.kind === "tumbleweed") {
+          p.x += p.vx;
+          p.bounce = (p.bounce || 0) + dt * 6;
+          p.rot = (p.rot || 0) + (p.spin || 0.1);
+          // bounce hop along the sand
+          const hop = Math.abs(Math.sin(p.bounce)) * (4 + p.size * 0.15);
+          const drawY = p.y - hop;
+          ctx.save();
+          ctx.translate(p.x, drawY);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = 0.75;
+          // rough tumbleweed body
+          ctx.strokeStyle = "#8a6a3a";
+          ctx.fillStyle = "rgba(120, 90, 45, 0.55)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // spiky bits
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            const r0 = p.size * 0.25;
+            const r1 = p.size * (0.45 + (k % 2) * 0.12);
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+            ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+            ctx.stroke();
+          }
+          // soft ground shadow
+          ctx.restore();
+          ctx.globalAlpha = 0.15;
+          ctx.fillStyle = "#000";
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y + 2, p.size * 0.4, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (p.x > w + 50) particles.splice(i, 1);
+          continue;
+        }
         ctx.globalAlpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(p.age * 3 + sec));
         ctx.fillStyle = "#fff6c8";
         ctx.fillRect(p.x, p.y, p.size, p.size);
