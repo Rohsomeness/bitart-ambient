@@ -898,7 +898,10 @@ body.fullscreen .btn-hide {
     gap: 6px;
   }
 
-  .player { width: min(300px, 100%); }
+  .player { width: min(340px, 100%); }
+  .scene-btn { width: 64px; }
+  .scene-thumb { width: 64px; height: 42px; }
+  .scene-nav { width: 24px !important; height: 36px !important; }
 
   .hint { display: none; }
   .hint-mobile { display: inline; }
@@ -935,13 +938,6 @@ body.fullscreen .btn-hide {
   body:not(.fullscreen) .scene-btn { width: 58px; }
   body:not(.fullscreen) .scene-thumb { width: 58px; height: 38px; }
   body:not(.fullscreen) .scene-name { font-size: 0; height: 0; }
-}
-
-@media (max-width: 640px) {
-  .scene-btn { width: 64px; }
-  .scene-thumb { width: 64px; height: 42px; }
-  .scene-nav { width: 24px !important; height: 36px !important; }
-  .player { width: min(340px, 100%); }
 }
 
 /* Reduced motion */
