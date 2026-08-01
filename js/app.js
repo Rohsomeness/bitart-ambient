@@ -206,10 +206,13 @@
     brandDot.classList.toggle("live", on);
 
     if (on) {
+      audioUnlocked = true;
+      await AmbientAudio.resume();
       await AmbientAudio.play(SCENES[index].id);
       ParticleFX.start();
     } else {
       AmbientAudio.pause();
+      ParticleFX.stop();
     }
   }
 
@@ -351,28 +354,8 @@
   }
 
   // --- Events ---
-  async function unlockAudioAndPlay() {
-    if (audioUnlocked && playing) {
-      await AmbientAudio.resume();
-      return;
-    }
-    audioUnlocked = true;
-    await AmbientAudio.resume();
-    if (!playing) await setPlaying(true);
-  }
-
-  // Browsers block audio until a gesture — first tap/key starts sound quietly
-  const unlockOnce = async () => {
-    await unlockAudioAndPlay();
-  };
-  ["pointerdown", "keydown", "touchstart"].forEach((ev) => {
-    window.addEventListener(ev, unlockOnce, { once: true, capture: true });
-  });
-
   playBtn.addEventListener("click", async () => {
     press(playBtn);
-    audioUnlocked = true;
-    await AmbientAudio.resume();
     AmbientAudio.thock("play");
     await setPlaying(!playing);
   });
@@ -587,7 +570,7 @@
     if (playing) await AmbientAudio.resume();
   });
 
-  // Boot — jump straight into the ambient scene (no start screen)
+  // Boot — scene visible but paused until user hits play
   ParticleFX.init($("#particles"));
   ParticleFX.setEnabled(true);
   buildRail();
@@ -597,22 +580,11 @@
   sceneArt.dataset.scene = SCENES[0].id;
   document.body.dataset.scene = SCENES[0].id;
   lcdScene.textContent = SCENES[0].name.toUpperCase();
-  lcdStatus.textContent = "READY";
   ParticleFX.setMode(SCENES[0].id);
-  ParticleFX.start();
   AmbientAudio.setVolume(Number(volSlider.value) / 100);
   setPlayerHidden(false);
-
-  // Try autoplay; if the browser blocks it, first gesture unlocks sound
-  (async () => {
-    try {
-      await AmbientAudio.resume();
-      await setPlaying(true);
-      audioUnlocked = true;
-    } catch (_) {
-      lcdStatus.textContent = "TAP TO HEAR";
-    }
-  })();
+  // Explicit paused state: no particles, no scene motion, no audio
+  setPlaying(false);
 
   SCENES.slice(1).forEach((s) => {
     const img = new Image();

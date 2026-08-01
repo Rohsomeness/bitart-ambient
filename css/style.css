@@ -103,8 +103,9 @@ body {
   transform: scale(1.03);
   transform-origin: center center;
   transition: opacity 0.7s ease, filter 0.7s ease;
-  animation: kenburns 28s ease-in-out infinite alternate;
-  will-change: transform;
+  /* Motion only while playing — see body.is-playing rules below */
+  animation: none;
+  filter: none;
 }
 
 .scene-art.switching {
@@ -112,28 +113,40 @@ body {
   filter: blur(4px) brightness(0.7);
 }
 
-/* Scene-specific motion — keep framing centered (scale / subtle symmetric drift) */
-body[data-scene="ocean"] .scene-art,
-body[data-scene="lighthouse"] .scene-art {
+/* Scene motion only when ambient is playing */
+body.is-playing .scene-art {
+  animation: kenburns 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+body.is-playing[data-scene="ocean"] .scene-art,
+body.is-playing[data-scene="lighthouse"] .scene-art {
   animation: tide 12s ease-in-out infinite alternate;
 }
-body[data-scene="fireplace"] .scene-art {
+body.is-playing[data-scene="fireplace"] .scene-art {
   animation: firepulse 3.5s ease-in-out infinite alternate;
 }
-body[data-scene="pets"] .scene-art {
+body.is-playing[data-scene="pets"] .scene-art {
   animation: breath 3.6s ease-in-out infinite;
 }
-body[data-scene="train"] .scene-art {
+body.is-playing[data-scene="train"] .scene-art {
   animation: trainpan 16s ease-in-out infinite alternate;
 }
-body[data-scene="fireworks"] .scene-art {
+body.is-playing[data-scene="fireworks"] .scene-art {
   animation: nightglow 6s ease-in-out infinite alternate;
 }
-body[data-scene="aurora"] .scene-art {
+body.is-playing[data-scene="aurora"] .scene-art {
   animation: aurorapan 18s ease-in-out infinite alternate;
 }
-body[data-scene="reef"] .scene-art {
+body.is-playing[data-scene="reef"] .scene-art {
   animation: undercurrent 12s ease-in-out infinite alternate;
+}
+
+/* Frozen still frame when paused */
+body:not(.is-playing) .scene-art {
+  animation: none !important;
+  transform: scale(1.03) !important;
+  filter: none !important;
+  will-change: auto;
 }
 
 @keyframes kenburns {
