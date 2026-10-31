@@ -2,7 +2,23 @@
 
 Cute retro **pixel-art ambient player** — peaceful screensavers with soft procedural soundscapes, living particles, and mobile-friendly controls.
 
-**Live:** https://rohsomeness.github.io/bitart-ambient/
+**Live demo:** [rohsomeness.github.io/bitart-ambient](https://rohsomeness.github.io/bitart-ambient/)
+
+Sibling to [bitart-visualizer](https://github.com/Rohsomeness/bitart-visualizer) and [bitart-camera](https://github.com/Rohsomeness/bitart-camera).
+
+## Screenshots
+
+![Fireplace scene with retro player shell](docs/screenshots/playing-fireplace.jpg)
+
+*Fireplace scene playing — cozy cabin art, particle glow, and the thocky player UI.*
+
+![Neon City scene](docs/screenshots/playing-neon-city.jpg)
+
+*Neon City — one of 30 deep-linkable scenes.*
+
+![All scenes grid modal](docs/screenshots/all-scenes-grid.jpg)
+
+*All-scenes grid (30 vibes).*
 
 ## Deep links
 
@@ -64,8 +80,17 @@ Also works with hash form: `#neon`. Changing scenes updates the address bar so y
 
 ## Local
 
-Open `index.html` or:
+Open `index.html` or serve over localhost:
 
 ```bash
-npx serve .
+npx --yes serve .
 ```
+
+Then open the printed URL (usually `http://localhost:3000`).
+
+## Stack
+
+- Static HTML / CSS / JS (no build step)
+- Procedural Web Audio ambience
+- Canvas particle overlays on scene art
+- GitHub Pages from `main` (root)
